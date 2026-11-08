@@ -1,0 +1,8 @@
+# Fixture for profile hetzner. busy = fixture-hetzner (value > 0), idle = fixture-hetzner-idle (value 0), both in namespace crickets-e2e.
+# Served statically by the e2e fixture exporter; Service annotation load-balancer.hetzner.cloud/name: fixture-hetzner (idle: fixture-hetzner-idle).
+# TYPE hetzner_load_balancer_open_connections gauge
+hetzner_load_balancer_open_connections{hetzner_load_balancer_id="4711",hetzner_load_balancer_name="fixture-hetzner"} 3
+hetzner_load_balancer_open_connections{hetzner_load_balancer_id="4712",hetzner_load_balancer_name="fixture-hetzner-idle"} 0
+# TYPE hetzner_load_balancer_connections_per_second gauge
+hetzner_load_balancer_connections_per_second{hetzner_load_balancer_id="4711",hetzner_load_balancer_name="fixture-hetzner"} 1.5
+hetzner_load_balancer_connections_per_second{hetzner_load_balancer_id="4712",hetzner_load_balancer_name="fixture-hetzner-idle"} 0

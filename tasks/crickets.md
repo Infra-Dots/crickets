@@ -55,21 +55,21 @@ are not in Prometheus by default. Each one needs an exporter, and the docs name 
 
 | Profile | Match | Metric (via) | Join key |
 |---|---|---|---|
-| traefik (k3s default) | ingressClass `traefik` | `traefik_service_requests_total` (native) | `service=~"<ns>-<svc>-.*@kubernetes"` |
+| traefik (k3s default) | ingressClass `traefik` | `traefik_service_requests_total` (native, `:9100/metrics`) | `service=~"<ns>-<svc>-.*@kubernetes"` (live: `spike-whoami-80@kubernetes`) |
 | ingress-nginx (retired upstream, still everywhere) | class `nginx` | `nginx_ingress_controller_requests` (native) | `namespace`/`exported_namespace`, `ingress`, `service` |
-| kong | class `kong` | `kong_http_requests_total` (Prometheus plugin) | `service`/`route` |
-| istio | class `istio` | `istio_requests_total` (native) | `destination_service_name`, `source_workload="istio-ingressgateway"`, `reporter="destination"` |
-| aws alb / nlb | hostname `*.elb.amazonaws.com` / LB-controller annotations | `aws_applicationelb_request_count_sum`, `aws_networkelb_new_flow_count_sum` (YACE) | `dimension_LoadBalancer=~"app/<lbName>/.*"` |
-| gcp | GKE annotation `ingress.kubernetes.io/url-map` / forwarding-rule | `stackdriver_https_lb_rule_..._request_count` (stackdriver_exporter) | `url_map_name` / `forwarding_rule_name` |
-| azure | AGIC class / `service.beta.kubernetes.io/azure-*` | App Gateway `Requests`, LB `ByteCount` (azure-metrics-exporter) | resource id / frontend IP |
-| hetzner | annotation `load-balancer.hetzner.cloud/name` | hcloud LB `requests_per_second` / `open_connections` (hcloud exporter: **pick one in Phase 0**) | LB name |
-| digitalocean | annotation `service.beta.kubernetes.io/do-loadbalancer-*` | LB request/connection metrics (exporter: **pick one in Phase 0, may not exist**) | LB id/name |
-| traefik-gateway | gatewayClass controller `traefik.io/gateway-controller` | `traefik_service_requests_total` | `service=~".*@kubernetesgateway"` + route/svc (format pinned in Phase 0) |
-| envoy-gateway | controller `gateway.envoyproxy.io/gatewayclass-controller` | `envoy_cluster_upstream_rq_total` (native) | `envoy_cluster_name=~"httproute/<ns>/<route>/rule/.*"` |
-| istio-gateway | controller `istio.io/gateway-controller` | `istio_requests_total` | same as istio, `source_workload` = the Gateway's deployment |
-| nginx-gateway-fabric | controller `gateway.nginx.org/nginx-gateway-controller` | upstream request metrics (Phase 0: confirm per-route metrics exist) | upstream name |
-| kong-gateway | controller `konghq.com/kic-gateway-controller` | `kong_http_requests_total` | `route` |
-| gke-gateway | class `gke-l7-*` | stackdriver LB metrics (as gcp) | Gateway annotation / forwarding rule |
+| kong | class `kong` | `kong_http_requests_total` (Prometheus plugin, `status_code_metrics=true`) | `service=~"<ns>[.]<svc>[.][^.]+"` |
+| istio | class `istio` | `istio_requests_total` (native) | `destination_service_name`, `destination_service_namespace`, `source_workload="istio-ingressgateway"`, `reporter="source"` (a gateway reports as source) |
+| aws alb / nlb | Ingress class `alb` / Service LB-controller annotations (hostname alone is ambiguous) | `aws_applicationelb_request_count_sum`, `aws_networkelb_new_flow_count_sum` (YACE) | `dimension_LoadBalancer=~"app/<lbName>/.*"` |
+| gcp | GKE Ingress, annotation `ingress.kubernetes.io/url-map` | `stackdriver_https_lb_rule_loadbalancing_googleapis_com_https_request_count` (stackdriver_exporter) | `url_map_name` = the annotation value |
+| azure | Service `service.beta.kubernetes.io/azure-*`; AGIC unsupported (no gateway name) | LB `ByteCount` as `azure_lb_bytecount_total` (webdevops azure-metrics-exporter) | `dimension="<LBIP>"` (FrontendIPAddress) |
+| hetzner | annotation `load-balancer.hetzner.cloud/name` | `hetzner_load_balancer_connections_per_second` (wacken89/hetzner-load-balancer-prometheus-exporter) | `hetzner_load_balancer_name` |
+| digitalocean | annotation `service.beta.kubernetes.io/do-loadbalancer-*` | **unsupported**: no exporter with per-LB traffic | n/a |
+| traefik-gateway | gatewayClass controller `traefik.io/gateway-controller` | `traefik_service_requests_total` | `service=~"<ns>-<svc>-https?-[0-9]+@kubernetesgateway"` (live: `spike-whoami-http-80@kubernetesgateway`) |
+| envoy-gateway | controller `gateway.envoyproxy.io/gatewayclass-controller` | `envoy_cluster_upstream_rq_total` (native) | `envoy_cluster_name=~"httproute/<routeNS>/<route>/rule/.*"` |
+| istio-gateway | controller `istio.io/gateway-controller` | `istio_requests_total` | as istio, `source_workload=~"<gateway>-.*"` (unverified live) |
+| nginx-gateway-fabric | controller `gateway.nginx.org/nginx-gateway-controller` | **unsupported**: no per-route request metric found | n/a |
+| kong-gateway | controller `konghq.com/kic-gateway-controller` | `kong_http_requests_total` | `service=~"httproute[.].*[.]svc[.](.*_)?<ns>[.]<svc>[.].*"` |
+| gke-gateway | class `gke-l7-*` | **unsupported**: url map is in the Gateway's annotation, not in `Exposure` | n/a |
 
 Counters use `sum(increase(m[{{.Window}}]))` and gauges use `sum(sum_over_time(m[{{.Window}}]))`.
 The profile author writes the whole expression, and the app only compares the scalar to `threshold`.
@@ -142,11 +142,12 @@ RBAC: `get,list` deployments, statefulsets, services, ingresses, ingressclasses,
 ## Checklist
 
 ### Phase 0: provider spike (subagent **P**, parallel with A/B)
-- [ ] For each profile above: exact metric + label names from the exporter's source/docs, with a link
-- [ ] Pick the Hetzner and DigitalOcean exporters, or mark the profile "unsupported: no exporter"
-- [ ] Write `internal/providers/profiles.yaml` + one `.prom` fixture sample per profile (`test/e2e/fixtures/`)
-- [ ] Confirm the k3s Traefik metrics endpoint/port and service label format on a live k3d cluster, for both the Ingress and the Gateway API provider
-- [ ] Confirm how to switch on the k3s Traefik Gateway API provider (`HelmChartConfig` + Gateway API CRDs) and pin the CRD version
+- [x] For each profile above: exact metric + label names from the exporter's source/docs, with a link
+- [x] Pick the Hetzner and DigitalOcean exporters, or mark the profile "unsupported: no exporter"
+- [x] Write `internal/providers/profiles.yaml` + one `.prom` fixture sample per profile (`test/e2e/fixtures/`)
+- [x] Confirm the k3s Traefik metrics endpoint/port and service label format on a live k3d cluster, for both the Ingress and the Gateway API provider
+- [x] Confirm how to switch on the k3s Traefik Gateway API provider (`HelmChartConfig` + Gateway API CRDs) and pin the CRD version
+  - Done: CRDs `v1.4.0` standard channel, listener port 8000, manifests in `test/e2e/manifests/spike/`; details in `docs/providers-research.md`.
 
 ### Phase 1: core (subagent **A**)
 - [ ] `go mod init`, Makefile (`test`, `lint`, `e2e`), golangci-lint config

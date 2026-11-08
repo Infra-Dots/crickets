@@ -1,0 +1,9 @@
+# k3s: HelmChartConfig merges into the packaged Traefik chart values.
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata: {name: traefik, namespace: kube-system}
+spec:
+  valuesContent: |-
+    providers:
+      kubernetesGateway:
+        enabled: true

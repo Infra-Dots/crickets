@@ -1,0 +1,8 @@
+# Fixture for profile aws-nlb. busy = fixture-aws-nlb (value > 0), idle = fixture-aws-nlb-idle (value 0), both in namespace crickets-e2e.
+# Served statically by the e2e fixture exporter; Service status hostname: fixture-aws-nlb-0123456789abcdef.elb.us-east-1.amazonaws.com, annotation service.beta.kubernetes.io/aws-load-balancer-type.
+# TYPE yace_cloudwatch_requests_total counter
+yace_cloudwatch_requests_total 168
+# HELP aws_networkelb_new_flow_count_sum Help is not implemented yet.
+# TYPE aws_networkelb_new_flow_count_sum gauge
+aws_networkelb_new_flow_count_sum{account_id="123456789012",dimension_LoadBalancer="net/fixture-aws-nlb/0123456789abcdef",name="arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/fixture-aws-nlb/0123456789abcdef",region="us-east-1"} 42
+aws_networkelb_new_flow_count_sum{account_id="123456789012",dimension_LoadBalancer="net/fixture-aws-nlb-idle/fedcba9876543210",name="arn:aws:elasticloadbalancing:us-east-1:123456789012:loadbalancer/net/fixture-aws-nlb-idle/fedcba9876543210",region="us-east-1"} 0
