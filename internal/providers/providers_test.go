@@ -140,17 +140,35 @@ func TestRenderUnknownField(t *testing.T) {
 
 func TestLBName(t *testing.T) {
 	tests := map[string]string{
-		"k8s-default-web-0123456789abcdef-1234567890.us-east-1.elb.amazonaws.com": "k8s-default-web-0123456789abcdef",
-		"a1b2c3d4-987654321.eu-west-1.elb.amazonaws.com":                          "a1b2c3d4",
-		"internal-foo-123.us-east-1.elb.amazonaws.com":                            "internal-foo",
-		"nodigits.elb.amazonaws.com":                                              "nodigits",
-		"trailing-abc.elb.amazonaws.com":                                          "trailing-abc",
-		"":                                                                        "",
+		"k8s-default-myingress-0a1b2c3d4e-1234567890.us-east-1.elb.amazonaws.com":   "k8s-default-myingress-0a1b2c3d4e",
+		"k8s-default-mysvc-1a2b3c4d5e-0123456789abcdef.elb.us-east-1.amazonaws.com": "k8s-default-mysvc-1a2b3c4d5e",
+		"internal-foo-123.us-east-1.elb.amazonaws.com":                              "foo",
+		"dualstack.web-42.eu-west-1.elb.amazonaws.com":                              "web",
+		"web-42.cn-north-1.elb.amazonaws.com.cn":                                    "web",
+		"a1b2c3.lb.example.com":                                                     "",
+		"":                                                                          "",
 	}
 	for in, want := range tests {
 		if got := LBName(in); got != want {
 			t.Errorf("LBName(%q)=%q want %q", in, got, want)
 		}
+	}
+}
+
+func TestRenderNeedAndEscape(t *testing.T) {
+	ps, err := Parse([]byte(`- {name: a, supported: true, match: {kinds: [Service], annotations: [k]}, health: up, query: 'm{n="{{need (index .Annotations "k")}}"}'}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := ps[0].Render(Exposure{}, time.Hour); err == nil || !strings.Contains(err.Error(), "missing join key") {
+		t.Fatalf("missing key: got %v", err)
+	}
+	q, err := ps[0].Render(Exposure{Annotations: map[string]string{"k": `x"} or vector(0) #\`}}, time.Hour)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `m{n="x\"} or vector(0) #\\"}`; q != want {
+		t.Fatalf("got %s want %s", q, want)
 	}
 }
 

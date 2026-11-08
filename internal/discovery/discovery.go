@@ -272,7 +272,7 @@ func (ix *index) exposures(svc corev1.Service, base providers.Exposure) []Exposu
 		}
 		for _, p := range parents {
 			e := Exposure{Exposure: base}
-			e.ExposureKind, e.Route, e.Annotations = providers.KindHTTPRoute, r.Name, r.Annotations
+			e.ExposureKind, e.Route, e.RouteNamespace, e.Annotations = providers.KindHTTPRoute, r.Name, r.Namespace, r.Annotations
 			e.Facts = providers.Facts{Kind: providers.KindHTTPRoute, Annotations: r.Annotations}
 			for _, h := range r.Spec.Hostnames {
 				e.Hosts = append(e.Hosts, string(h))

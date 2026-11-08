@@ -112,8 +112,8 @@ up in Prometheus through kube-state-metrics `--metric-labels-allowlist`.
 ```
 
 Template data, `providers.Exposure`:
-`Namespace, Kind (Deployment|StatefulSet), Workload, ExposureKind (Ingress|HTTPRoute|Service), Service string; ServicePorts []int32; Ingress, Route, Gateway, GatewayNamespace string; Hosts []string; LBHostname, LBIP string; Annotations map[string]string (of the exposure object); Window string`.
-`Window` is whole seconds as a Prometheus duration (`604800s`), never Go's `168h0m0s`. Funcs: `lbName` (AWS ELB hostname → LB name; Phase 0 pins the rule).
+`Namespace, Kind (Deployment|StatefulSet), Workload, ExposureKind (Ingress|HTTPRoute|Service), Service string; ServicePorts []int32; Ingress, Route, RouteNamespace, Gateway, GatewayNamespace string; Hosts []string; LBHostname, LBIP string; Annotations map[string]string (of the exposure object); Window string`.
+`Window` is whole seconds as a Prometheus duration (`604800s`), never Go's `168h0m0s`. Funcs: `lbName` (AWS ALB/NLB hostname → LB name, `""` otherwise); `need` (empty value fails the render → exposure **unknown**; wrap every join key with it, because an empty key matches no series and would read as idle). Annotation values are PromQL-escaped before render, since users write them.
 
 Binary: `crickets --config /etc/crickets/config.yaml [--kubeconfig path]`, one pass. Exit 0 = pass done (dry or not); 1 = Prometheus errored, config invalid, or a write failed. Image `ghcr.io/infra-dots/crickets`, runs as nonroot 65532.
 

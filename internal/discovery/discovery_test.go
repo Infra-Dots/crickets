@@ -255,7 +255,7 @@ func TestHTTPRoutes(t *testing.T) {
 	t.Run("same namespace, class resolved", func(t *testing.T) {
 		g := append(gwObjs(), route("a", "r", parent, gwv1.BackendObjectReference{Name: "s"}))
 		e := run(t, Options{}, base(), g...).Workloads[0].Exposures
-		if len(e) != 1 || e[0].Route != "r" || e[0].Gateway != "main" || e[0].GatewayNamespace != "gw" ||
+		if len(e) != 1 || e[0].Route != "r" || e[0].RouteNamespace != "a" || e[0].Gateway != "main" || e[0].GatewayNamespace != "gw" ||
 			e[0].Facts.GatewayClass != "traefik" || e[0].Facts.GatewayController != "traefik.io/gateway-controller" || e[0].LBIP != "10.0.0.1" {
 			t.Fatalf("%+v", e)
 		}

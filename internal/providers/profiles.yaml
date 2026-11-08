@@ -1,6 +1,6 @@
 # Built-in provider profiles. Contract: tasks/crickets.md. Evidence: docs/providers-research.md.
 # Counters: sum(increase(..)). Gauges (exporters re-export the latest value): sum(sum_over_time(..)).
-# Cloud queries fall back to vector(1) (busy) when the join key is missing: never idle on a guess.
+# Join keys go through `need`: an empty one fails the render, so the exposure is unknown, never idle.
 # Order = match order (first wins): controllers first, cloud LBs last.
 
 - name: traefik
@@ -114,8 +114,8 @@
     gatewayClasses: []
     annotations: []
     hostnameSuffixes: []
-  # Cluster name httproute/<routeNS>/<route>/rule/<n>. Exposure has no route namespace, so any ns matches (errs toward busy).
-  query: 'sum(increase(envoy_cluster_upstream_rq_total{envoy_cluster_name=~"httproute/[^/]+/{{.Route}}/rule/.*"}[{{.Window}}]))'
+  # Cluster name httproute/<routeNS>/<route>/rule/<n>.
+  query: 'sum(increase(envoy_cluster_upstream_rq_total{envoy_cluster_name=~"httproute/{{.RouteNamespace}}/{{.Route}}/rule/.*"}[{{.Window}}]))'
   health: 'envoy_server_live'
 
 - name: nginx-gateway-fabric
@@ -143,7 +143,7 @@
     annotations: []
     hostnameSuffixes: []   # not used: an ELB hostname is also what ingress-nginx/Traefik show
   # YACE, AWS/ApplicationELB RequestCount, statistic Sum. dimension_LoadBalancer = app/<name>/<id>.
-  query: '{{if .LBHostname}}sum(sum_over_time(aws_applicationelb_request_count_sum{dimension_LoadBalancer=~"app/{{lbName .LBHostname}}/.*"}[{{.Window}}])){{else}}vector(1){{end}}'
+  query: 'sum(sum_over_time(aws_applicationelb_request_count_sum{dimension_LoadBalancer=~"app/{{need (lbName .LBHostname)}}/.*"}[{{.Window}}]))'
   health: 'yace_cloudwatch_requests_total'
 
 - name: aws-nlb
@@ -159,7 +159,7 @@
       - service.beta.kubernetes.io/aws-load-balancer-nlb-target-type
     hostnameSuffixes: []
   # YACE, AWS/NetworkELB NewFlowCount, statistic Sum. dimension_LoadBalancer = net/<name>/<id>.
-  query: '{{if .LBHostname}}sum(sum_over_time(aws_networkelb_new_flow_count_sum{dimension_LoadBalancer=~"net/{{lbName .LBHostname}}/.*"}[{{.Window}}])){{else}}vector(1){{end}}'
+  query: 'sum(sum_over_time(aws_networkelb_new_flow_count_sum{dimension_LoadBalancer=~"net/{{need (lbName .LBHostname)}}/.*"}[{{.Window}}]))'
   health: 'yace_cloudwatch_requests_total'
 
 - name: gcp
@@ -174,7 +174,7 @@
     hostnameSuffixes: []
   # stackdriver_exporter with delta metrics as gauges (default; no --monitoring.aggregate-deltas).
   # One URL map serves the whole Ingress, so a sibling service's traffic counts as busy (safe side).
-  query: '{{with index .Annotations "ingress.kubernetes.io/url-map"}}sum(sum_over_time(stackdriver_https_lb_rule_loadbalancing_googleapis_com_https_request_count{url_map_name="{{.}}"}[{{$.Window}}])){{else}}vector(1){{end}}'
+  query: 'sum(sum_over_time(stackdriver_https_lb_rule_loadbalancing_googleapis_com_https_request_count{url_map_name="{{need (index .Annotations "ingress.kubernetes.io/url-map")}}"}[{{.Window}}]))'
   health: 'stackdriver_monitoring_scrapes_total'
 
 - name: gke-gateway
@@ -208,7 +208,7 @@
     hostnameSuffixes: []
   # webdevops azure-metrics-exporter: name=azure_lb, template={name}_{metric}_{aggregation}, metric=ByteCount,
   # aggregation=total, metricFilter="FrontendIPAddress eq '*'" (the single dimension lands in label "dimension").
-  query: '{{if .LBIP}}sum(sum_over_time(azure_lb_bytecount_total{dimension="{{.LBIP}}"}[{{.Window}}])){{else}}vector(1){{end}}'
+  query: 'sum(sum_over_time(azure_lb_bytecount_total{dimension="{{need .LBIP}}"}[{{.Window}}]))'
   health: 'azurerm_api_ratelimit'
 
 - name: azure-agic
@@ -236,7 +236,7 @@
     annotations: [load-balancer.hetzner.cloud/name]
     hostnameSuffixes: []
   # wacken89/hetzner-load-balancer-prometheus-exporter; requests_per_second only exists for HTTP services, so use connections.
-  query: '{{with index .Annotations "load-balancer.hetzner.cloud/name"}}sum(sum_over_time(hetzner_load_balancer_connections_per_second{hetzner_load_balancer_name="{{.}}"}[{{$.Window}}])){{else}}vector(1){{end}}'
+  query: 'sum(sum_over_time(hetzner_load_balancer_connections_per_second{hetzner_load_balancer_name="{{need (index .Annotations "load-balancer.hetzner.cloud/name")}}"}[{{.Window}}]))'
   health: 'hetzner_load_balancer_open_connections'
 
 - name: digitalocean

@@ -4,8 +4,10 @@ package providers
 import (
 	"bytes"
 	_ "embed"
+	"errors"
 	"fmt"
 	"path"
+	"regexp"
 	"slices"
 	"strings"
 	"text/template"
@@ -49,6 +51,7 @@ type Exposure struct {
 	ExposureKind, Service     string
 	ServicePorts              []int32
 	Ingress, Route            string
+	RouteNamespace            string
 	Gateway, GatewayNamespace string
 	Hosts                     []string
 	LBHostname, LBIP          string
@@ -110,7 +113,7 @@ func (p *Profile) compile() error {
 	if strings.TrimSpace(p.Health) == "" || strings.TrimSpace(p.Query) == "" {
 		return fmt.Errorf("query and health are required")
 	}
-	t, err := template.New(p.Name).Funcs(template.FuncMap{"lbName": LBName}).Option("missingkey=error").Parse(p.Query)
+	t, err := template.New(p.Name).Funcs(template.FuncMap{"lbName": LBName, "need": need}).Option("missingkey=error").Parse(p.Query)
 	if err != nil {
 		return fmt.Errorf("query: %w", err)
 	}
@@ -190,6 +193,12 @@ func WindowString(d time.Duration) string { return fmt.Sprintf("%ds", int64(d/ti
 // Render fills the query template for one exposure.
 func (p *Profile) Render(e Exposure, window time.Duration) (string, error) {
 	e.Window = WindowString(window)
+	// Annotations are user-written and land inside PromQL string literals.
+	esc := make(map[string]string, len(e.Annotations))
+	for k, v := range e.Annotations {
+		esc[k] = promEscape.Replace(v)
+	}
+	e.Annotations = esc
 	var b bytes.Buffer
 	if err := p.tmpl.Execute(&b, e); err != nil {
 		return "", fmt.Errorf("render %s: %w", p.Name, err)
@@ -197,11 +206,27 @@ func (p *Profile) Render(e Exposure, window time.Duration) (string, error) {
 	return b.String(), nil
 }
 
-// LBName turns an AWS ELB hostname into the LB name: first DNS label minus the trailing "-<digits>".
-func LBName(hostname string) string {
-	label, _, _ := strings.Cut(hostname, ".")
-	if i := strings.LastIndex(label, "-"); i > 0 && label[i+1:] != "" && strings.Trim(label[i+1:], "0123456789") == "" {
-		return label[:i]
+var promEscape = strings.NewReplacer(`\`, `\\`, `"`, `\"`, "\n", `\n`)
+
+// need fails the render on an empty join key, so the exposure is unknown instead of matching nothing (= idle).
+func need(v string) (string, error) {
+	if v == "" {
+		return "", errors.New("missing join key")
 	}
-	return label
+	return v, nil
+}
+
+var (
+	nlbHost = regexp.MustCompile(`^(?:internal-)?(.+)-[0-9a-f]{16}\.elb\.[a-z0-9-]+\.amazonaws\.com(?:\.cn)?$`)
+	albHost = regexp.MustCompile(`^(?:internal-|dualstack\.)*(.+)-[0-9]+\.[a-z0-9-]+\.elb\.amazonaws\.com(?:\.cn)?$`)
+)
+
+// LBName turns an AWS ALB/NLB hostname into the LB name YACE reports; "" for anything else.
+func LBName(hostname string) string {
+	for _, re := range []*regexp.Regexp{nlbHost, albHost} {
+		if m := re.FindStringSubmatch(hostname); m != nil {
+			return m[1]
+		}
+	}
+	return ""
 }
