@@ -1,0 +1,69 @@
+schedule: "0 */6 * * *"
+# Optional hard limit for one run, in seconds.
+activeDeadlineSeconds: null
+successfulJobsHistoryLimit: 3
+failedJobsHistoryLimit: 3
+
+image:
+  repository: ghcr.io/infra-dots/crickets
+  tag: ""   # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+# Rendered verbatim into /etc/crickets/config.yaml.
+config:
+  prometheus:
+    url: http://prometheus:9090
+    bearerTokenFile: ""
+    timeout: 30s
+  window: 168h
+  minAge: 168h
+  threshold: 0
+  dryRun: true
+  namespaces:
+    include: []
+    exclude: [kube-system, kube-public]
+  selector: ""
+  label: crickets.io/idle
+  providers: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    memory: 128Mi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 65532
+  runAsGroup: 65532
+  capabilities:
+    drop: [ALL]
+  seccompProfile:
+    type: RuntimeDefault
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+podAnnotations: {}
+podLabels: {}
+
+# e.g. mount a Secret and set config.prometheus.bearerTokenFile to its path.
+extraEnv: []
+extraVolumes: []
+extraVolumeMounts: []

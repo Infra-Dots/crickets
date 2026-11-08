@@ -1,0 +1,72 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schedule": {"type": "string", "minLength": 1},
+    "activeDeadlineSeconds": {"type": ["integer", "null"], "minimum": 1},
+    "successfulJobsHistoryLimit": {"type": "integer", "minimum": 0},
+    "failedJobsHistoryLimit": {"type": "integer", "minimum": 0},
+    "image": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "repository": {"type": "string", "minLength": 1},
+        "tag": {"type": "string"},
+        "pullPolicy": {"enum": ["Always", "IfNotPresent", "Never"]}
+      }
+    },
+    "imagePullSecrets": {"type": "array", "items": {"type": "object"}},
+    "nameOverride": {"type": "string"},
+    "fullnameOverride": {"type": "string"},
+    "serviceAccount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "create": {"type": "boolean"},
+        "name": {"type": "string"}
+      }
+    },
+    "config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "prometheus": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "url": {"type": "string", "minLength": 1},
+            "bearerTokenFile": {"type": "string"},
+            "timeout": {"type": "string"}
+          }
+        },
+        "window": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h)([0-9.]+(ns|us|µs|ms|s|m|h))*$"},
+        "minAge": {"type": "string", "pattern": "^[0-9]+(\\.[0-9]+)?(ns|us|µs|ms|s|m|h)([0-9.]+(ns|us|µs|ms|s|m|h))*$"},
+        "threshold": {"type": "number", "minimum": 0},
+        "dryRun": {"type": "boolean"},
+        "namespaces": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "include": {"type": "array", "items": {"type": "string"}},
+            "exclude": {"type": "array", "items": {"type": "string"}}
+          }
+        },
+        "selector": {"type": "string"},
+        "label": {"type": "string", "minLength": 1},
+        "providers": {"type": "array", "items": {"type": "object"}}
+      }
+    },
+    "resources": {"type": "object"},
+    "podSecurityContext": {"type": "object"},
+    "securityContext": {"type": "object"},
+    "nodeSelector": {"type": "object"},
+    "tolerations": {"type": "array", "items": {"type": "object"}},
+    "affinity": {"type": "object"},
+    "podAnnotations": {"type": "object"},
+    "podLabels": {"type": "object"},
+    "extraEnv": {"type": "array", "items": {"type": "object"}},
+    "extraVolumes": {"type": "array", "items": {"type": "object"}},
+    "extraVolumeMounts": {"type": "array", "items": {"type": "object"}}
+  }
+}

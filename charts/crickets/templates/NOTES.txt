@@ -1,0 +1,18 @@
+Crickets {{ .Chart.AppVersion }} is scheduled as CronJob {{ include "crickets.fullname" . }} ({{ .Values.schedule }}).
+{{- if .Values.config.dryRun }}
+
+It starts in dryRun: it logs what it would label and writes nothing.
+Set config.dryRun=false once the logs look right.
+{{- else }}
+
+dryRun is OFF: idle workloads get the {{ .Values.config.label }} label.
+{{- end }}
+
+Trigger a run now:
+  kubectl -n {{ .Release.Namespace }} create job --from=cronjob/{{ include "crickets.fullname" . }} {{ include "crickets.name" . }}-manual
+
+Read the logs (structured JSON):
+  kubectl -n {{ .Release.Namespace }} logs job/{{ include "crickets.name" . }}-manual
+
+List labeled workloads:
+  kubectl get deploy,sts -A -l {{ .Values.config.label }}=true

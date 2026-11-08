@@ -1,0 +1,195 @@
+---
+# Source: crickets/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crickets-sa
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: idle-finder
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+
+---
+# Source: crickets/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crickets-idle-finder
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: idle-finder
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.yaml: |
+    dryRun: false
+    label: example.com/idle
+    minAge: 24h
+    namespaces:
+      exclude: []
+      include:
+      - apps
+      - staging
+    prometheus:
+      bearerTokenFile: /var/run/secrets/prom/token
+      timeout: 10s
+      url: https://prom.example.com
+    providers:
+    - health: up{job="custom"}
+      match:
+        ingressClasses:
+        - custom
+        kinds:
+        - Ingress
+      name: custom
+      query: sum(increase(custom_requests_total{ns="{{.Namespace}}"}[{{.Window}}]))
+      supported: true
+    selector: team=web
+    threshold: 5
+    window: 72h
+
+---
+# Source: crickets/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crickets-idle-finder
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: idle-finder
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [get, list, patch]
+  - apiGroups: [""]
+    resources: [services]
+    verbs: [get, list]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses, ingressclasses]
+    verbs: [get, list]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [httproutes, gateways, gatewayclasses]
+    verbs: [get, list]
+---
+# Source: crickets/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: crickets-idle-finder
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: idle-finder
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: crickets-idle-finder
+subjects:
+  - kind: ServiceAccount
+    name: crickets-sa
+    namespace: crickets
+
+---
+# Source: crickets/templates/cronjob.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crickets-idle-finder
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: idle-finder
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  schedule: "30 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      activeDeadlineSeconds: 600
+      template:
+        metadata:
+          annotations:
+            checksum/config: c1f005ad96684496c7df84f9d02756049b4949a5c4007a157543a7ecd72f5cc1
+            team: platform
+          labels:
+            app.kubernetes.io/name: idle-finder
+            app.kubernetes.io/instance: crickets
+            tier: ops
+        spec:
+          restartPolicy: Never
+          serviceAccountName: crickets-sa
+          imagePullSecrets:
+            - name: ghcr-pull
+          securityContext:
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: crickets
+              image: "ghcr.io/infra-dots/crickets:0.2.0"
+              imagePullPolicy: Always
+              args: [--config, /etc/crickets/config.yaml]
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                  - ALL
+                readOnlyRootFilesystem: true
+                runAsGroup: 65532
+                runAsNonRoot: true
+                runAsUser: 65532
+                seccompProfile:
+                  type: RuntimeDefault
+              resources:
+                limits:
+                  memory: 256Mi
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+              env:
+                - name: TZ
+                  value: UTC
+              volumeMounts:
+                - name: config
+                  mountPath: /etc/crickets
+                  readOnly: true
+                - mountPath: /var/run/secrets/prom
+                  name: prom-token
+                  readOnly: true
+          volumes:
+            - name: config
+              configMap:
+                name: crickets-idle-finder
+            - name: prom-token
+              secret:
+                secretName: prom-token
+          nodeSelector:
+            kubernetes.io/os: linux
+          affinity:
+            nodeAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                nodeSelectorTerms:
+                - matchExpressions:
+                  - key: topology.kubernetes.io/zone
+                    operator: In
+                    values:
+                    - eu-central-1a
+          tolerations:
+            - effect: NoSchedule
+              key: dedicated
+              operator: Equal
+              value: ops

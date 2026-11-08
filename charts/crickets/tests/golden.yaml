@@ -1,0 +1,156 @@
+---
+# Source: crickets/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: crickets
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: crickets
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+
+---
+# Source: crickets/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: crickets
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: crickets
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+data:
+  config.yaml: |
+    dryRun: true
+    label: crickets.io/idle
+    minAge: 168h
+    namespaces:
+      exclude:
+      - kube-system
+      - kube-public
+      include: []
+    prometheus:
+      bearerTokenFile: ""
+      timeout: 30s
+      url: http://prometheus:9090
+    providers: []
+    selector: ""
+    threshold: 0
+    window: 168h
+
+---
+# Source: crickets/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: crickets
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: crickets
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+rules:
+  - apiGroups: [apps]
+    resources: [deployments, statefulsets]
+    verbs: [get, list, patch]
+  - apiGroups: [""]
+    resources: [services]
+    verbs: [get, list]
+  - apiGroups: [networking.k8s.io]
+    resources: [ingresses, ingressclasses]
+    verbs: [get, list]
+  - apiGroups: [gateway.networking.k8s.io]
+    resources: [httproutes, gateways, gatewayclasses]
+    verbs: [get, list]
+---
+# Source: crickets/templates/rbac.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: crickets
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: crickets
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: crickets
+subjects:
+  - kind: ServiceAccount
+    name: crickets
+    namespace: crickets
+
+---
+# Source: crickets/templates/cronjob.yaml
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: crickets
+  labels:
+    helm.sh/chart: crickets-0.1.0
+    app.kubernetes.io/name: crickets
+    app.kubernetes.io/instance: crickets
+    app.kubernetes.io/version: "0.1.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  schedule: "0 */6 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          annotations:
+            checksum/config: 162f9963e207c88debed2333f8ba43848edc505ef8029e07523427922bd2eff9
+          labels:
+            app.kubernetes.io/name: crickets
+            app.kubernetes.io/instance: crickets
+        spec:
+          restartPolicy: Never
+          serviceAccountName: crickets
+          securityContext:
+            runAsGroup: 65532
+            runAsNonRoot: true
+            runAsUser: 65532
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: crickets
+              image: "ghcr.io/infra-dots/crickets:0.1.0"
+              imagePullPolicy: IfNotPresent
+              args: [--config, /etc/crickets/config.yaml]
+              securityContext:
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                  - ALL
+                readOnlyRootFilesystem: true
+                runAsGroup: 65532
+                runAsNonRoot: true
+                runAsUser: 65532
+                seccompProfile:
+                  type: RuntimeDefault
+              resources:
+                limits:
+                  memory: 128Mi
+                requests:
+                  cpu: 50m
+                  memory: 64Mi
+              volumeMounts:
+                - name: config
+                  mountPath: /etc/crickets
+                  readOnly: true
+          volumes:
+            - name: config
+              configMap:
+                name: crickets
