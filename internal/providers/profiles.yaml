@@ -1,0 +1,9 @@
+# Placeholder: replaced by the Phase 0 provider spike.
+- name: traefik
+  supported: true
+  unit: requests
+  match:
+    kinds: [Ingress]
+    ingressClasses: [traefik]
+  query: 'sum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Service}}-.*@kubernetes"}[{{.Window}}]))'
+  health: 'up{job="traefik"}'
