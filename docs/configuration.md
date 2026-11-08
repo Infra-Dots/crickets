@@ -95,7 +95,7 @@ The key is not validated by Crickets; the API server rejects a malformed one, an
 
 ### Workload opt-out
 
-Not a config key. Annotate a workload to exclude it forever.
+Not a config key. Annotate a workload to exclude it forever. If it is already labeled, the next pass removes the label.
 
 ```sh
 kubectl annotate deploy/web -n shop crickets.io/ignore=true

@@ -102,9 +102,13 @@ metadata:
 
 ## When the label is removed
 
-Only on an **active** verdict: some exposure got more than `threshold` over the window. Crickets then applies an empty `metadata` body under its field manager, which releases the label and the evidence annotation.
+Crickets applies an empty `metadata` body under its field manager, which releases the label and the evidence annotation, when:
 
-Not removed: when the workload turns unknown, is ignored, is younger than `minAge`, loses its last exposure, or is outside the selected namespaces. A stale label can remain in those cases. Check `since` in the evidence.
+- the verdict is **active**: some exposure got more than `threshold` over the window;
+- the workload now has `crickets.io/ignore: "true"`, so the opt-out also stops a cleanup that was already queued;
+- the workload lost its last exposure.
+
+The label stays as it is when the workload is **unknown** (no data is not a reason to write), younger than `minAge`, or outside the selected namespaces or selector (Crickets doesn't look at those). Only fields Crickets owns are released. A label someone set by hand stays.
 
 ## Safety properties
 

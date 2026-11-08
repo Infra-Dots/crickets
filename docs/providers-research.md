@@ -48,7 +48,7 @@ Metric `kong_http_requests_total{service,route,code,source,consumer}`, **only wh
 Metric `istio_requests_total` (https://istio.io/latest/docs/reference/config/metrics/). Labels: `reporter source_workload source_workload_namespace destination_service destination_service_name destination_service_namespace destination_workload response_code ...`. A gateway reports `reporter="source"` ("source if report is from a client Istio proxy or a gateway"), which also works for workloads without a sidecar. **The plan's `reporter="destination"` is wrong for that case and is changed.** `istio-gateway`: auto-provisioned gateways run as `<gateway>-<gatewayclass>`; that naming was not run, hence the prefix match and the flag. Health `istio_build` (unverified, emitted by every proxy and by istiod).
 
 ### envoy-gateway
-Metric `envoy_cluster_upstream_rq_total{envoy_cluster_name}`. Cluster names `httproute/<routeNS>/<route>/rule/<n>`, seen in the Envoy Gateway translator test data (https://github.com/envoyproxy/gateway, `internal/xds/translator/testdata`). `Exposure` has no route namespace, so the query wildcards it. Not run live; whether per-cluster stats are on in the default EG proxy bootstrap is unconfirmed. Health `envoy_server_live`.
+Metric `envoy_cluster_upstream_rq_total{envoy_cluster_name}`. Cluster names `httproute/<routeNS>/<route>/rule/<n>`, seen in the Envoy Gateway translator test data (https://github.com/envoyproxy/gateway, `internal/xds/translator/testdata`). The query joins on `Exposure.RouteNamespace`. Not run live; whether per-cluster stats are on in the default EG proxy bootstrap is unconfirmed. Health `envoy_server_live`.
 
 ### nginx-gateway-fabric (unsupported)
 The NGF source (https://github.com/nginx/nginx-gateway-fabric) exposes controller metrics (`event_batch_processing_milliseconds`, ...) and server-level NGINX metrics; no per-route or per-upstream request counter was found. Marked `supported: false`.
@@ -62,7 +62,7 @@ The LB controller annotation `alb.ingress.kubernetes.io/load-balancer-name` sets
 
 - NLB form `^(?:internal-)?(.+)-[0-9a-f]{16}\.elb\.<region>\.amazonaws\.com(\.cn)?$`: name is group 1.
 - ALB / classic form `^(?:internal-|dualstack\.)*(.+)-[0-9]+\.<region>\.elb\.amazonaws\.com(\.cn)?$`: name is group 1.
-- Anything else returns `""`; the profile queries then fall back to `vector(1)` (busy).
+- Anything else returns `""`; queries wrap it in `need`, so the exposure is unknown.
 
 | Hostname | `lbName` |
 |---|---|
@@ -92,7 +92,7 @@ Not verified: whether Hetzner health checks count in `connections_per_second` (t
 The DO API has `/v2/monitoring/metrics/load_balancer/frontend_http_requests_per_second` (https://docs.digitalocean.com/reference/pydo/reference/monitoring/get_lb_frontend_http_requests_per_second/). Existing exporters only count load balancers (`digitalocean_load_balancers_count` in `digitalocean/digitalocean_exporter`). No maintained exporter publishes per-LB traffic.
 
 ## Findings that touch the contracts
-- A join key that is empty (no `LBHostname`, annotation missing) yields an empty vector, which the reconciler reads as 0 = idle. The cloud queries guard with `{{if}}/{{with}}...{{else}}vector(1)`; a `requires: [LBHostname]` field in the profile that maps to unknown would be cleaner.
+- A join key that is empty (no `LBHostname`, annotation missing) would match no series and read as 0 = idle. Resolved: every join key goes through `need`, which fails the render, so the exposure is unknown.
 - `Exposure` lacks the route namespace (envoy-gateway) and Gateway annotations (gke-gateway).
 - `hostnameSuffixes` cannot tell ALB from NLB (`.elb.amazonaws.com` vs `.elb.<region>.amazonaws.com`) and also matches ELBs fronting other controllers, so aws profiles match on class/annotation.
 - Template funcs used: `index`, `with`, `lbName`; `lbName` must return `""` on a non-matching hostname.

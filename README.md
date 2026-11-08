@@ -9,7 +9,7 @@ It does:
 - Run as a Kubernetes CronJob: one pass, then exit. No operator, no leader election, no state.
 - Walk workload, Service, Ingress / HTTPRoute / LoadBalancer Service, then ask Prometheus about the edge in front of it.
 - Add the label `crickets.io/idle=true` and an evidence annotation to a workload only when **every** exposure in front of it is known and quiet.
-- Remove both when traffic comes back.
+- Remove both when traffic comes back, the workload is opted out, or it is no longer exposed.
 
 It never:
 
