@@ -1,0 +1,9 @@
+apiVersion: v2
+name: crickets
+description: Labels Deployments and StatefulSets whose Ingress, HTTPRoute or LoadBalancer Service received no traffic in Prometheus. Labels, never deletes.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+home: https://github.com/Infra-Dots/crickets
+sources:
+  - https://github.com/Infra-Dots/crickets

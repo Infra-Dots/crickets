@@ -1,0 +1,70 @@
+schedule: "30 2 * * *"
+activeDeadlineSeconds: 600
+successfulJobsHistoryLimit: 1
+failedJobsHistoryLimit: 5
+nameOverride: idle-finder
+image:
+  tag: "0.2.0"
+  pullPolicy: Always
+imagePullSecrets:
+  - name: ghcr-pull
+serviceAccount:
+  name: crickets-sa
+config:
+  prometheus:
+    url: https://prom.example.com
+    bearerTokenFile: /var/run/secrets/prom/token
+    timeout: 10s
+  window: 72h
+  minAge: 24h
+  threshold: 5
+  dryRun: false
+  namespaces:
+    include: [apps, staging]
+    exclude: []
+  selector: team=web
+  label: example.com/idle
+  providers:
+    - name: custom
+      supported: true
+      match:
+        kinds: [Ingress]
+        ingressClasses: [custom]
+      query: 'sum(increase(custom_requests_total{ns="{{.Namespace}}"}[{{.Window}}]))'
+      health: 'up{job="custom"}'
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+nodeSelector:
+  kubernetes.io/os: linux
+tolerations:
+  - key: dedicated
+    operator: Equal
+    value: ops
+    effect: NoSchedule
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: topology.kubernetes.io/zone
+              operator: In
+              values: [eu-central-1a]
+podAnnotations:
+  team: platform
+podLabels:
+  tier: ops
+extraEnv:
+  - name: TZ
+    value: UTC
+extraVolumes:
+  - name: prom-token
+    secret:
+      secretName: prom-token
+extraVolumeMounts:
+  - name: prom-token
+    mountPath: /var/run/secrets/prom
+    readOnly: true
