@@ -1,1 +1,1 @@
-- [Crickets](crickets.md) — **partial** · crickets · Go CronJob: workload→Service→Ingress/HTTPRoute/LB→provider PromQL; labels `crickets.io/idle` via SSA when every exposure ≤ threshold, unknown≠idle; k3d e2e, Helm, docs; phase 0+1 merged (72c4613).
+- [Crickets](crickets.md) — **partial** · crickets · Go CronJob: workload→Service→Ingress/HTTPRoute/LB→provider PromQL; labels `crickets.io/idle` when every exposure ≤ threshold, unknown≠idle; phase 0+1 merged (72c4613).
