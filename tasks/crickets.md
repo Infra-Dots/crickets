@@ -150,15 +150,15 @@ RBAC: `get,list` deployments, statefulsets, services, ingresses, ingressclasses,
   - Done: CRDs `v1.4.0` standard channel, listener port 8000, manifests in `test/e2e/manifests/spike/`; details in `docs/providers-research.md`.
 
 ### Phase 1: core (subagent **A**)
-- [ ] `go mod init`, Makefile (`test`, `lint`, `e2e`), golangci-lint config
-- [ ] config: load/defaults/validate + table tests
-- [ ] discovery: selector matching, Ingress backends (rules + defaultBackend), LB services. Tests on the client-go fake clientset
-- [ ] discovery: HTTPRoute backendRefs (same-namespace + cross-namespace with ReferenceGrant ignored for v1, since the route still routes), parentRef → Gateway → GatewayClass. Use `sigs.k8s.io/gateway-api` typed client + fake, and treat missing CRDs (discovery 404) as no routes
-- [ ] providers: matching order, template render, `lbName`. Tests per built-in profile
-- [ ] prom: query at time t, empty → (0, ok), error → unknown. Tests against `httptest` Prometheus JSON
-- [ ] reconcile: idle/active/unknown/skip matrix, SSA apply + removal, dryRun writes nothing, Prometheus down writes nothing
-- [ ] main: one pass, structured `slog` JSON logs, exit codes 0/1
-- [ ] Dockerfile (distroless static, nonroot)
+- [x] `go mod init`, Makefile (`test`, `lint`, `build`, `image`; `e2e` target left to C), golangci-lint config
+- [x] config: load/defaults/validate + table tests
+- [x] discovery: selector matching, Ingress backends (rules + defaultBackend), LB services. Tests on the client-go fake clientset
+- [x] discovery: HTTPRoute backendRefs (same-namespace + cross-namespace with ReferenceGrant ignored for v1, since the route still routes), parentRef → Gateway → GatewayClass. Use `sigs.k8s.io/gateway-api` typed client + fake, and treat missing CRDs (discovery 404) as no routes
+- [x] providers: matching order, template render, `lbName`. Tests per built-in profile
+- [x] prom: query at time t, empty → (0, ok), error → unknown. Tests against `httptest` Prometheus JSON
+- [x] reconcile: idle/active/unknown/skip matrix, SSA apply + removal, dryRun writes nothing, Prometheus down writes nothing
+- [x] main: one pass, structured `slog` JSON logs, exit codes 0/1
+- [x] Dockerfile (distroless static, nonroot)
 
 ### Phase 1: chart (subagent **B**)
 - [ ] `charts/crickets`: CronJob, ServiceAccount, ClusterRole/Binding, ConfigMap from `.Values.config`
