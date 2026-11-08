@@ -1,0 +1,4 @@
+- 2026-11-08T22:20+0200 — **Crickets phase 1 integration** — need() makes a missing join key unknown instead of idle; annotation values PromQL-escaped; verified ALB/NLB lbName rules; Exposure.RouteNamespace (72c4613)
+- 2026-11-08T22:20+0200 — **Crickets Helm chart** — CronJob (dryRun default), least-privilege ClusterRole, ConfigMap, values schema, golden tests via tests/check.sh (e5c8423)
+- 2026-11-08T22:20+0200 — **Crickets core** — config, discovery (Ingress/HTTPRoute/LB Service), provider match+render, Prometheus querier, SSA reconcile, CLI; 89 unit tests, golangci-lint clean (be208b4)
+- 2026-11-08T22:20+0200 — **Crickets provider profiles** — 17 profiles (13 supported), Traefik Ingress+Gateway formats verified live on k3s, cloud fixtures, docs/providers-research.md (5fd40b0)

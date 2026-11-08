@@ -182,7 +182,7 @@ RBAC: `get,list` deployments, statefulsets, services, ingresses, ingressclasses,
 - [ ] `docs/development.md`: unit + e2e
 
 ### Phase 4: integration (me)
-- [ ] Review each agent's diff, run `make test lint e2e`, fix seams
+- [x] Phase 1: merged P → A → B, fixed seams (72c4613); `make test lint` + chart check green. e2e pending (Phase 2)
 - [ ] Review section below
 
 ## Subagent split
