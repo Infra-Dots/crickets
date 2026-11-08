@@ -371,3 +371,36 @@ func TestKubeWriterApply(t *testing.T) {
 		t.Fatalf("%s", got[1].GetPatch())
 	}
 }
+
+// A label set before the opt-out (or before the exposure went away) must come off,
+// or a downstream cleaner still acts on it.
+func TestReleasedRemovesOurLabel(t *testing.T) {
+	labeled := func(extra map[string]string) func(*appsv1.Deployment) {
+		return func(d *appsv1.Deployment) {
+			d.Labels = map[string]string{"crickets.io/idle": "true"}
+			d.Annotations = extra
+		}
+	}
+	tests := map[string]wl{
+		"ignored":   {name: "w", svcs: map[string]string{"s": "a"}, mod: labeled(map[string]string{"crickets.io/ignore": "true"})},
+		"unexposed": {name: "w", svcs: map[string]string{"s": ""}, mod: labeled(nil)},
+	}
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			for _, dry := range []bool{false, true} {
+				w := &fakeWriter{}
+				s, err := newRec(t, &fakeProm{}, w, dry, objects(tt)...).Run(context.Background())
+				if err != nil {
+					t.Fatal(err)
+				}
+				wantCalls := 1
+				if dry {
+					wantCalls = 0
+				}
+				if s.Unlabeled != 1 || len(w.calls) != wantCalls || (wantCalls == 1 && w.calls[0].labels != nil) {
+					t.Fatalf("dry=%v summary %+v calls %+v", dry, s, w.calls)
+				}
+			}
+		})
+	}
+}

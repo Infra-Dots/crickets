@@ -21,6 +21,8 @@ const (
 	Idle    Verdict = "idle"
 	Active  Verdict = "active"
 	Unknown Verdict = "unknown"
+	// Released: ignored or no longer exposed, so a label we set earlier no longer holds.
+	Released Verdict = "released"
 )
 
 type EvidenceExposure struct {
@@ -72,13 +74,17 @@ func (r *Reconciler) Run(ctx context.Context) (Summary, error) {
 	if err != nil {
 		return s, err
 	}
-	s.Ignored, s.Young = res.Ignored, res.Young
+	s.Ignored, s.Young = len(res.Ignored), res.Young
 
 	healthy := map[string]health{} // per profile, per pass
 	var decisions []decision
+	for _, w := range res.Ignored {
+		decisions = append(decisions, decision{w: w, verdict: Released})
+	}
 	for _, w := range res.Workloads {
 		if len(w.Exposures) == 0 {
 			s.Unexposed++
+			decisions = append(decisions, decision{w: w, verdict: Released})
 			continue
 		}
 		d, err := r.decide(ctx, w, now, healthy)
@@ -217,19 +223,19 @@ func (r *Reconciler) write(ctx context.Context, d decision, now time.Time, s *Su
 			log.Info("labeled idle", "evidence", string(b))
 			s.Labeled++
 		}
-	case Active:
+	case Active, Released:
 		if !labeled {
 			return nil
 		}
 		if r.Cfg.DryRun {
-			log.Info("would unlabel")
+			log.Info("would unlabel", "verdict", d.verdict)
 			s.Unlabeled++
 			return nil
 		}
 		if err := r.Writer.Apply(ctx, d.w.Kind, d.w.Namespace, d.w.Name, nil, nil); err != nil {
 			return err
 		}
-		log.Info("unlabeled, traffic seen")
+		log.Info("unlabeled", "verdict", d.verdict)
 		s.Unlabeled++
 	}
 	return nil

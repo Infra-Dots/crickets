@@ -207,8 +207,8 @@ func TestFiltering(t *testing.T) {
 				t.Errorf("missing %s", w)
 			}
 		}
-		if len(got) != 4 || r.Ignored != 1 || r.Young != 1 {
-			t.Fatalf("%v ignored=%d young=%d", got, r.Ignored, r.Young)
+		if len(got) != 4 || len(r.Ignored) != 1 || r.Young != 1 {
+			t.Fatalf("%v ignored=%d young=%d", got, len(r.Ignored), r.Young)
 		}
 	})
 	t.Run("label selector", func(t *testing.T) {

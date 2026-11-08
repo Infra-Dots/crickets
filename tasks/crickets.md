@@ -40,7 +40,7 @@ Gap: edge traffic per provider, "no data" kept apart from "zero traffic", and a 
    was never hit.
 6. Workload is **idle** only if *every* exposure is known and `value <= threshold`.
    Idle → apply label `crickets.io/idle=true` plus annotation `crickets.io/idle-evidence`
-   (JSON: since, window, per-exposure provider/query/value). Traffic seen again → remove both.
+   (JSON: since, window, per-exposure provider/query/value). Traffic seen again, `crickets.io/ignore` added, or the last exposure gone → remove both. Unknown leaves them as they are.
 7. Writes go through server-side apply with field manager `crickets`, on `metadata` only. The
    pod template is untouched, so nothing rolls out, and GitOps tools see a field another manager owns.
 8. `dryRun: true` is the default: it logs what it would label and writes nothing.

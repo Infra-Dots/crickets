@@ -42,10 +42,10 @@ type Workload struct {
 	Exposures             []Exposure
 }
 
-// Result counts what was left out before exposures were considered.
+// Result holds candidates plus what was left out before exposures were considered.
 type Result struct {
 	Workloads []Workload
-	Ignored   int
+	Ignored   []Workload // returned so a label set before the opt-out can be removed
 	Young     int
 }
 
@@ -92,7 +92,7 @@ func (d *Discoverer) Discover(ctx context.Context, o Options) (*Result, error) {
 		switch {
 		case !nsAllowed(w.Namespace, o):
 		case w.Annotations[IgnoreAnnotation] == "true":
-			res.Ignored++
+			res.Ignored = append(res.Ignored, w.Workload)
 		case o.Now.Sub(w.Created) < o.MinAge:
 			res.Young++
 		default:
