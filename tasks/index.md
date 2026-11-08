@@ -1,0 +1,1 @@
+- [Crickets](crickets.md) — **open** · crickets · Go CronJob: workload→Service→Ingress/HTTPRoute/LB→provider PromQL; labels `crickets.io/idle` via SSA when every exposure ≤ threshold, unknown≠idle; k3d e2e, Helm, docs.

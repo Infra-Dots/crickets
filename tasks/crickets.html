@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crickets Plan</title>
+<script src="https://cdn.tailwindcss.com/3.4.16"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased">
+<main class="max-w-5xl mx-auto px-4 py-10 space-y-10">
+
+<header class="space-y-2">
+  <h1 class="text-3xl font-bold">Crickets</h1>
+  <p class="text-slate-600">Label Deployments/StatefulSets whose Ingress or LoadBalancer saw no traffic in Prometheus over a window. It labels and never deletes. The simulator below runs the e2e fixture cluster from the plan.</p>
+</header>
+
+<section class="grid md:grid-cols-2 gap-4">
+  <div class="rounded-xl border bg-white p-5">
+    <h2 class="font-semibold mb-2">Today</h2>
+    <ul class="list-disc pl-5 text-sm space-y-1 text-slate-600">
+      <li>Idle apps are found by someone eyeballing Grafana, or not at all.</li>
+      <li>kor finds <em>unreferenced</em> resources, not unused ones. An Ingress that still routes counts as "used".</li>
+      <li>Kubecost uses pod network bytes, and health checks and scrapes count as traffic.</li>
+      <li>Cloud LB metrics sit in CloudWatch/Stackdriver/Azure Monitor, and nothing joins them back to a workload.</li>
+    </ul>
+  </div>
+  <div class="rounded-xl border bg-white p-5 border-emerald-300">
+    <h2 class="font-semibold mb-2">With Crickets</h2>
+    <ul class="list-disc pl-5 text-sm space-y-1 text-slate-600">
+      <li>workload → Service → Ingress / LB → provider profile → PromQL.</li>
+      <li>Health is checked at <code>now</code> and at <code>now − window</code>, so a dead exporter or short retention gives <b>unknown</b>, not idle.</li>
+      <li>Idle only when <b>every</b> exposure is known and ≤ threshold.</li>
+      <li>Server-side apply of a label plus an evidence annotation. No rollout, and the label is removed when traffic returns.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="rounded-xl border bg-white p-5 space-y-4">
+  <h2 class="font-semibold">Simulator: e2e fixture cluster</h2>
+  <div class="flex flex-wrap gap-6 text-sm items-center">
+    <label class="flex items-center gap-2">threshold
+      <input id="threshold" type="range" min="0" max="100" value="0" class="accent-emerald-600">
+      <span id="thresholdVal" class="font-mono w-8">0</span>
+    </label>
+    <label class="flex items-center gap-2">minAge (days)
+      <input id="minAge" type="range" min="0" max="14" value="7" class="accent-emerald-600">
+      <span id="minAgeVal" class="font-mono w-8">7</span>
+    </label>
+    <label class="flex items-center gap-2"><input id="dryRun" type="checkbox" checked> dryRun</label>
+    <label class="flex items-center gap-2"><input id="promUp" type="checkbox" checked> Prometheus up</label>
+    <label class="flex items-center gap-2"><input id="traffic" type="checkbox"> send traffic to old-landing</label>
+  </div>
+  <div class="overflow-x-auto">
+    <table class="w-full text-sm">
+      <thead class="text-left text-slate-500 border-b">
+        <tr><th class="py-2 pr-3">Workload</th><th class="pr-3">Exposure</th><th class="pr-3">Profile</th><th class="pr-3">Age</th><th class="pr-3 text-right">Requests / 7d</th><th>Result</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p id="summary" class="text-sm font-medium"></p>
+  <pre id="evidence" class="text-xs bg-slate-900 text-slate-100 rounded-lg p-3 overflow-x-auto"></pre>
+</section>
+
+<section class="rounded-xl border bg-white p-5 space-y-3">
+  <h2 class="font-semibold">Provider profiles</h2>
+  <p class="text-sm text-slate-600">Each profile is a match rule plus a PromQL template. Every name is verified in Phase 0 before code relies on it, and cloud profiles need an exporter.</p>
+  <div class="flex flex-wrap gap-2" id="provTabs"></div>
+  <pre id="provQuery" class="text-xs bg-slate-900 text-slate-100 rounded-lg p-3 overflow-x-auto"></pre>
+</section>
+
+<section class="rounded-xl border bg-white p-5 space-y-3">
+  <h2 class="font-semibold">Subagent waves</h2>
+  <div class="grid md:grid-cols-3 gap-3 text-sm">
+    <div class="rounded-lg bg-sky-50 p-3"><div class="font-semibold mb-1">Wave 1 (parallel)</div>P: provider spike<br>A: core + unit tests<br>B: Helm chart</div>
+    <div class="rounded-lg bg-amber-50 p-3"><div class="font-semibold mb-1">Wave 2 (parallel)</div>C: k3d e2e suite + CI<br>D: Markdown docs</div>
+    <div class="rounded-lg bg-emerald-50 p-3"><div class="font-semibold mb-1">Wave 3</div>Integrate, review, green <code>make test lint e2e</code></div>
+  </div>
+</section>
+
+</main>
+<script>
+const W = [
+  {name:'shop-api',      kind:'Deployment',  exp:'Ingress traefik',       prof:'traefik',     age:40, req:1240},
+  {name:'old-landing',   kind:'Deployment',  exp:'Ingress traefik',       prof:'traefik',     age:90, req:0},
+  {name:'worker',        kind:'Deployment',  exp:'—',                     prof:null,          age:60, req:null},
+  {name:'legacy-admin',  kind:'Deployment',  exp:'Ingress traefik',       prof:'traefik',     age:200,req:0, ignore:true},
+  {name:'fresh-deploy',  kind:'Deployment',  exp:'Ingress traefik',       prof:'traefik',     age:1,  req:0},
+  {name:'mystery',       kind:'Deployment',  exp:'Ingress haproxy',       prof:'',            age:30, req:null},
+  {name:'reports-db',    kind:'StatefulSet', exp:'Service LB (hetzner)',  prof:'hetzner',     age:120,req:0},
+  {name:'billing',       kind:'Deployment',  exp:'Ingress alb (fixture)', prof:'aws-alb',     age:75, req:37},
+  {name:'catalog',       kind:'Deployment',  exp:'HTTPRoute traefik-gw',  prof:'traefik-gateway', age:50, req:8800},
+  {name:'old-promo',     kind:'Deployment',  exp:'HTTPRoute traefik-gw',  prof:'traefik-gateway', age:45, req:0},
+];
+const $ = id => document.getElementById(id);
+const badge = (t,c) => `<span class="px-2 py-0.5 rounded-full text-xs font-medium ${c}">${t}</span>`;
+
+function decide(w, s) {
+  if (w.ignore) return ['skip: ignore annotation','bg-slate-100 text-slate-600'];
+  if (!w.prof && w.prof !== '') return ['skip: not exposed','bg-slate-100 text-slate-600'];
+  if (w.age < s.minAge) return ['skip: younger than minAge','bg-slate-100 text-slate-600'];
+  if (w.prof === '') return ['unknown: no profile','bg-violet-100 text-violet-700'];
+  if (!s.promUp) return ['unknown: health check failed','bg-violet-100 text-violet-700'];
+  const req = (w.name === 'old-landing' && s.traffic) ? 512 : w.req;
+  if (req <= s.threshold) return [s.dryRun ? 'would label idle' : 'labeled idle', 'bg-rose-100 text-rose-700', req];
+  return [w.name === 'old-landing' && s.traffic ? 'active: label removed' : 'active', 'bg-emerald-100 text-emerald-700', req];
+}
+
+function render() {
+  const s = {threshold:+$('threshold').value, minAge:+$('minAge').value, dryRun:$('dryRun').checked, promUp:$('promUp').checked, traffic:$('traffic').checked};
+  $('thresholdVal').textContent = s.threshold; $('minAgeVal').textContent = s.minAge;
+  let idle = [];
+  $('rows').innerHTML = W.map(w => {
+    const [r, c, req] = decide(w, s);
+    if (r.includes('idle')) idle.push({w, req});
+    const shown = req ?? (w.req ?? '—');
+    return `<tr class="border-b last:border-0"><td class="py-2 pr-3 font-mono">${w.name}<div class="text-xs text-slate-400">${w.kind}</div></td><td class="pr-3">${w.exp}</td><td class="pr-3 font-mono">${w.prof || (w.prof === '' ? '(none)' : '—')}</td><td class="pr-3">${w.age}d</td><td class="pr-3 text-right font-mono">${s.promUp || !w.prof ? shown : '?'}</td><td>${badge(r,c)}</td></tr>`;
+  }).join('');
+  $('summary').textContent = !s.promUp
+    ? 'Prometheus unreachable: zero writes, job exits 1.'
+    : `${idle.length} workload(s) ${s.dryRun ? 'would be' : 'are'} labeled crickets.io/idle=true${s.dryRun ? ' (dryRun: nothing written)' : ''}.`;
+  $('evidence').textContent = idle.length && s.promUp
+    ? `# annotation crickets.io/idle-evidence on ${idle[0].w.name}\n` + JSON.stringify({since:'2026-11-08T06:00:00Z', window:'168h', threshold:s.threshold, exposures:[{kind:idle[0].w.exp.split(' ')[0], provider:idle[0].w.prof, value:idle[0].req}]}, null, 2)
+    : '# no evidence written';
+}
+['threshold','minAge','dryRun','promUp','traffic'].forEach(id => $(id).addEventListener('input', render));
+render();
+
+const P = {
+  'traefik':       'sum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Service}}-.*@kubernetes"}[{{.Window}}]))\n# health: up{job="traefik"}',
+  'ingress-nginx': 'sum(increase(nginx_ingress_controller_requests{exported_namespace="{{.Namespace}}",ingress="{{.Ingress}}"}[{{.Window}}]))\n# health: up{job="ingress-nginx"}',
+  'kong':          'sum(increase(kong_http_requests_total{service=~".*{{.Service}}.*"}[{{.Window}}]))\n# health: up{job="kong"}',
+  'istio':         'sum(increase(istio_requests_total{reporter="destination",source_workload="istio-ingressgateway",destination_service_name="{{.Service}}",destination_service_namespace="{{.Namespace}}"}[{{.Window}}]))',
+  'aws-alb':       '# via YACE\nsum(sum_over_time(aws_applicationelb_request_count_sum{dimension_LoadBalancer=~"app/{{lbName .LBHostname}}/.*"}[{{.Window}}]))',
+  'gcp':           '# via stackdriver_exporter\nsum(sum_over_time(stackdriver_https_lb_rule_loadbalancing_googleapis_com_https_request_count{url_map_name="{{index .Annotations "ingress.kubernetes.io/url-map"}}"}[{{.Window}}]))',
+  'azure':         '# via azure-metrics-exporter; exact metric pinned in Phase 0\nsum(sum_over_time(azurerm_resource_metric{metric="Requests",resourceID=~".*{{.LBIP}}.*"}[{{.Window}}]))',
+  'hetzner':       '# exporter chosen in Phase 0\nsum(sum_over_time(<hcloud_lb_requests_per_second>{name="{{index .Annotations "load-balancer.hetzner.cloud/name"}}"}[{{.Window}}]))',
+  'digitalocean':  '# exporter chosen in Phase 0, may ship as "unsupported"',
+  'traefik-gateway': '# HTTPRoute via Traefik Gateway provider; label format pinned in Phase 0\nsum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Route}}-.*@kubernetesgateway"}[{{.Window}}]))',
+  'envoy-gateway': 'sum(increase(envoy_cluster_upstream_rq_total{envoy_cluster_name=~"httproute/{{.Namespace}}/{{.Route}}/rule/.*"}[{{.Window}}]))',
+};
+const tabs = $('provTabs');
+Object.keys(P).forEach((k,i) => {
+  const b = document.createElement('button');
+  b.textContent = k; b.className = 'px-3 py-1 rounded-full border text-sm';
+  b.onclick = () => { [...tabs.children].forEach(x => x.classList.remove('bg-slate-800','text-white')); b.classList.add('bg-slate-800','text-white'); $('provQuery').textContent = P[k]; };
+  tabs.appendChild(b); if (!i) b.click();
+});
+</script>
+</body>
+</html>
