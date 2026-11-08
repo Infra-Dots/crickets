@@ -1,0 +1,1 @@
+# gke-gateway is supported: false (url map not reachable from Exposure); no fixture. See docs/providers-research.md.

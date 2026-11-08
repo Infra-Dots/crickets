@@ -1,0 +1,1 @@
+# digitalocean is supported: false (no exporter with per-LB traffic); no fixture. See docs/providers-research.md.

@@ -1,0 +1,255 @@
+# Built-in provider profiles. Contract: tasks/crickets.md. Evidence: docs/providers-research.md.
+# Counters: sum(increase(..)). Gauges (exporters re-export the latest value): sum(sum_over_time(..)).
+# Cloud queries fall back to vector(1) (busy) when the join key is missing: never idle on a guess.
+# Order = match order (first wins): controllers first, cloud LBs last.
+
+- name: traefik
+  supported: true
+  unit: requests
+  match:
+    kinds: [Ingress]
+    ingressClasses: [traefik]
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # live k3d: service="spike-whoami-80@kubernetes" (<ns>-<svc>-<port>@kubernetes)
+  query: 'sum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Service}}-.*@kubernetes"}[{{.Window}}]))'
+  health: 'traefik_config_last_reload_success'
+
+- name: traefik-gateway
+  supported: true
+  unit: requests
+  match:
+    kinds: [HTTPRoute]
+    ingressClasses: []
+    gatewayControllers: [traefik.io/gateway-controller]
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # live k3d: service="spike-whoami-http-80@kubernetesgateway" (<ns>-<svc>-http-<port>; "http" is not the port name)
+  query: 'sum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Service}}-https?-[0-9]+@kubernetesgateway"}[{{.Window}}]))'
+  health: 'traefik_config_last_reload_success'
+
+- name: ingress-nginx
+  supported: true
+  unit: requests
+  match:
+    kinds: [Ingress]
+    ingressClasses: [nginx]
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # Prometheus renames the ingress namespace to exported_namespace when honor_labels is false.
+  query: >-
+    sum(increase(nginx_ingress_controller_requests{ingress="{{.Ingress}}",service="{{.Service}}",namespace="{{.Namespace}}"}[{{.Window}}]))
+    or
+    sum(increase(nginx_ingress_controller_requests{ingress="{{.Ingress}}",service="{{.Service}}",exported_namespace="{{.Namespace}}"}[{{.Window}}]))
+  health: 'nginx_ingress_controller_config_last_reload_successful'
+
+- name: kong
+  supported: true
+  unit: requests
+  match:
+    kinds: [Ingress]
+    ingressClasses: [kong]
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # KIC names the Kong service <ns>.<svc>.<port>. Needs the prometheus plugin with status_code_metrics=true.
+  query: 'sum(increase(kong_http_requests_total{service=~"{{.Namespace}}[.]{{.Service}}[.][^.]+"}[{{.Window}}]))'
+  health: 'kong_datastore_reachable'
+
+- name: kong-gateway
+  supported: true
+  unit: requests
+  match:
+    kinds: [HTTPRoute]
+    ingressClasses: []
+    gatewayControllers: [konghq.com/kic-gateway-controller]
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # KIC names the Kong service httproute.<routeNS>.svc.<ns>.<svc>.<port>[.<weight>] (backends joined by "_").
+  query: 'sum(increase(kong_http_requests_total{service=~"httproute[.].*[.]svc[.](.*_)?{{.Namespace}}[.]{{.Service}}[.].*"}[{{.Window}}]))'
+  health: 'kong_datastore_reachable'
+
+- name: istio
+  supported: true
+  unit: requests
+  match:
+    kinds: [Ingress]
+    ingressClasses: [istio]
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # The gateway reports as reporter="source", so this works without a sidecar on the workload.
+  query: 'sum(increase(istio_requests_total{reporter="source",source_workload="istio-ingressgateway",destination_service_name="{{.Service}}",destination_service_namespace="{{.Namespace}}"}[{{.Window}}]))'
+  health: 'istio_build'
+
+- name: istio-gateway
+  supported: true
+  unit: requests
+  match:
+    kinds: [HTTPRoute]
+    ingressClasses: []
+    gatewayControllers: [istio.io/gateway-controller]
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # Unverified live: auto-provisioned gateway deployment is "<gateway>-<class>" (e.g. "gw-istio"), hence the prefix match.
+  query: 'sum(increase(istio_requests_total{reporter="source",source_workload=~"{{.Gateway}}-.*",source_workload_namespace="{{.GatewayNamespace}}",destination_service_name="{{.Service}}",destination_service_namespace="{{.Namespace}}"}[{{.Window}}]))'
+  health: 'istio_build'
+
+- name: envoy-gateway
+  supported: true
+  unit: requests
+  match:
+    kinds: [HTTPRoute]
+    ingressClasses: []
+    gatewayControllers: [gateway.envoyproxy.io/gatewayclass-controller]
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # Cluster name httproute/<routeNS>/<route>/rule/<n>. Exposure has no route namespace, so any ns matches (errs toward busy).
+  query: 'sum(increase(envoy_cluster_upstream_rq_total{envoy_cluster_name=~"httproute/[^/]+/{{.Route}}/rule/.*"}[{{.Window}}]))'
+  health: 'envoy_server_live'
+
+- name: nginx-gateway-fabric
+  supported: false
+  unit: requests
+  match:
+    kinds: [HTTPRoute]
+    ingressClasses: []
+    gatewayControllers: [gateway.nginx.org/nginx-gateway-controller]
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # Unverified: no per-route/upstream request metric found in NGF source; only server-level NGINX metrics.
+  query: ''
+  health: ''
+
+- name: aws-alb
+  supported: true
+  unit: requests
+  match:
+    kinds: [Ingress]
+    ingressClasses: [alb]
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []   # not used: an ELB hostname is also what ingress-nginx/Traefik show
+  # YACE, AWS/ApplicationELB RequestCount, statistic Sum. dimension_LoadBalancer = app/<name>/<id>.
+  query: '{{if .LBHostname}}sum(sum_over_time(aws_applicationelb_request_count_sum{dimension_LoadBalancer=~"app/{{lbName .LBHostname}}/.*"}[{{.Window}}])){{else}}vector(1){{end}}'
+  health: 'yace_cloudwatch_requests_total'
+
+- name: aws-nlb
+  supported: true
+  unit: flows
+  match:
+    kinds: [Service]
+    ingressClasses: []
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations:
+      - service.beta.kubernetes.io/aws-load-balancer-type
+      - service.beta.kubernetes.io/aws-load-balancer-nlb-target-type
+    hostnameSuffixes: []
+  # YACE, AWS/NetworkELB NewFlowCount, statistic Sum. dimension_LoadBalancer = net/<name>/<id>.
+  query: '{{if .LBHostname}}sum(sum_over_time(aws_networkelb_new_flow_count_sum{dimension_LoadBalancer=~"net/{{lbName .LBHostname}}/.*"}[{{.Window}}])){{else}}vector(1){{end}}'
+  health: 'yace_cloudwatch_requests_total'
+
+- name: gcp
+  supported: true
+  unit: requests
+  match:
+    kinds: [Ingress]
+    ingressClasses: [gce, gce-internal]
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: [ingress.kubernetes.io/url-map]
+    hostnameSuffixes: []
+  # stackdriver_exporter with delta metrics as gauges (default; no --monitoring.aggregate-deltas).
+  # One URL map serves the whole Ingress, so a sibling service's traffic counts as busy (safe side).
+  query: '{{with index .Annotations "ingress.kubernetes.io/url-map"}}sum(sum_over_time(stackdriver_https_lb_rule_loadbalancing_googleapis_com_https_request_count{url_map_name="{{.}}"}[{{$.Window}}])){{else}}vector(1){{end}}'
+  health: 'stackdriver_monitoring_scrapes_total'
+
+- name: gke-gateway
+  supported: false
+  unit: requests
+  match:
+    kinds: [HTTPRoute]
+    ingressClasses: []
+    gatewayControllers: []
+    gatewayClasses: ['gke-l7-*']
+    annotations: []
+    hostnameSuffixes: []
+  # Unverified: the url map lives in the Gateway's networking.gke.io/url-maps annotation, which Exposure does not carry.
+  # Would need a new Exposure field (GatewayAnnotations), then the gcp metric with url_map_name.
+  query: ''
+  health: ''
+
+- name: azure
+  supported: true
+  unit: bytes
+  match:
+    kinds: [Service]
+    ingressClasses: []
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations:
+      - service.beta.kubernetes.io/azure-load-balancer-resource-group
+      - service.beta.kubernetes.io/azure-load-balancer-internal
+      - service.beta.kubernetes.io/azure-pip-name
+      - service.beta.kubernetes.io/azure-dns-label-name
+    hostnameSuffixes: []
+  # webdevops azure-metrics-exporter: name=azure_lb, template={name}_{metric}_{aggregation}, metric=ByteCount,
+  # aggregation=total, metricFilter="FrontendIPAddress eq '*'" (the single dimension lands in label "dimension").
+  query: '{{if .LBIP}}sum(sum_over_time(azure_lb_bytecount_total{dimension="{{.LBIP}}"}[{{.Window}}])){{else}}vector(1){{end}}'
+  health: 'azurerm_api_ratelimit'
+
+- name: azure-agic
+  supported: false
+  unit: requests
+  match:
+    kinds: [Ingress]
+    ingressClasses: [azure-application-gateway]
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: []
+    hostnameSuffixes: []
+  # Unverified join: TotalRequests (Microsoft.Network/applicationGateways) is per gateway, and Exposure has no gateway name.
+  query: ''
+  health: ''
+
+- name: hetzner
+  supported: true
+  unit: connections-per-second
+  match:
+    kinds: [Service]
+    ingressClasses: []
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: [load-balancer.hetzner.cloud/name]
+    hostnameSuffixes: []
+  # wacken89/hetzner-load-balancer-prometheus-exporter; requests_per_second only exists for HTTP services, so use connections.
+  query: '{{with index .Annotations "load-balancer.hetzner.cloud/name"}}sum(sum_over_time(hetzner_load_balancer_connections_per_second{hetzner_load_balancer_name="{{.}}"}[{{$.Window}}])){{else}}vector(1){{end}}'
+  health: 'hetzner_load_balancer_open_connections'
+
+- name: digitalocean
+  supported: false
+  unit: requests
+  match:
+    kinds: [Service]
+    ingressClasses: []
+    gatewayControllers: []
+    gatewayClasses: []
+    annotations: [service.beta.kubernetes.io/do-loadbalancer-name]
+    hostnameSuffixes: []
+  # Unverified: the DO API has frontend_http_requests_per_second, but no maintained Prometheus exporter exposes it
+  # (digitalocean_exporter only counts load balancers).
+  query: ''
+  health: ''
