@@ -160,9 +160,9 @@ RBAC: `get,list` deployments, statefulsets, services, ingresses, ingressclasses,
 - [ ] Dockerfile (distroless static, nonroot)
 
 ### Phase 1: chart (subagent **B**)
-- [ ] `charts/crickets`: CronJob, ServiceAccount, ClusterRole/Binding, ConfigMap from `.Values.config`
-- [ ] values: schedule, image, resources, securityContext (non-root, read-only FS), `config` passthrough
-- [ ] `values.schema.json`; `helm lint` + `helm template` golden test in CI
+- [x] `charts/crickets`: CronJob, ServiceAccount, ClusterRole/Binding, ConfigMap from `.Values.config`
+- [x] values: schedule, image, resources, securityContext (non-root, read-only FS), `config` passthrough
+- [x] `values.schema.json`; `helm lint` + `helm template` golden test in CI
 
 ### Phase 2: e2e on k3s (subagent **C**, after A+B)
 - [ ] `hack/e2e-up.sh`: k3d cluster (k3s ships Traefik), build + `k3d image import`, minimal Prometheus manifest scraping Traefik + a fixture exporter (busybox httpd serving `fixtures/*.prom`), `helm install` with `window: 2m`, `minAge: 0`, `dryRun: false`
