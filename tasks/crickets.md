@@ -174,12 +174,12 @@ RBAC: `get,list` deployments, statefulsets, services, ingresses, ingressclasses,
 - [ ] CI job on ubuntu runner
 
 ### Phase 3: docs (subagent **D**, after A+P)
-- [ ] `README.md`: what it does, what it won't do (delete), 60-second quickstart
-- [ ] `docs/how-it-works.md`: the decision rules above, unknown ≠ idle
-- [ ] `docs/configuration.md`: every key, generated from the config struct comments where possible
-- [ ] `docs/providers.md`: per profile, the exporter to install, the metric, the join, a sample PromQL, and how to write your own
-- [ ] `docs/acting-on-the-label.md`: kube-janitor / Kyverno / manual `kubectl get deploy -l crickets.io/idle`
-- [ ] `docs/development.md`: unit + e2e
+- [x] `README.md`: what it does, what it won't do (delete), 60-second quickstart
+- [x] `docs/how-it-works.md`: the decision rules above, unknown ≠ idle
+- [x] `docs/configuration.md`: every key, generated from the config struct comments where possible
+- [x] `docs/providers.md`: per profile, the exporter to install, the metric, the join, a sample PromQL, and how to write your own
+- [x] `docs/acting-on-the-label.md`: kube-janitor / Kyverno / manual `kubectl get deploy -l crickets.io/idle`
+- [x] `docs/development.md`: unit + e2e
 
 ### Phase 4: integration (me)
 - [x] Phase 1: merged P → A → B, fixed seams (72c4613); `make test lint` + chart check green. e2e pending (Phase 2)
