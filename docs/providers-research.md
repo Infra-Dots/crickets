@@ -92,4 +92,7 @@ Not verified: whether Hetzner health checks count in `connections_per_second` (t
 The DO API has `/v2/monitoring/metrics/load_balancer/frontend_http_requests_per_second` (https://docs.digitalocean.com/reference/pydo/reference/monitoring/get_lb_frontend_http_requests_per_second/). Existing exporters only count load balancers (`digitalocean_load_balancers_count` in `digitalocean/digitalocean_exporter`). No maintained exporter publishes per-LB traffic.
 
 ## Findings that touch the contracts
-See the report back to the lead; summarised there and in the plan's table.
+- A join key that is empty (no `LBHostname`, annotation missing) yields an empty vector, which the reconciler reads as 0 = idle. The cloud queries guard with `{{if}}/{{with}}...{{else}}vector(1)`; a `requires: [LBHostname]` field in the profile that maps to unknown would be cleaner.
+- `Exposure` lacks the route namespace (envoy-gateway) and Gateway annotations (gke-gateway).
+- `hostnameSuffixes` cannot tell ALB from NLB (`.elb.amazonaws.com` vs `.elb.<region>.amazonaws.com`) and also matches ELBs fronting other controllers, so aws profiles match on class/annotation.
+- Template funcs used: `index`, `with`, `lbName`; `lbName` must return `""` on a non-matching hostname.
