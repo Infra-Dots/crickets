@@ -184,8 +184,8 @@ RBAC: `get,list` deployments, statefulsets, services, ingresses, ingressclasses,
 ### Phase 4: integration (me)
 - [x] Phase 1: merged P → A → B, fixed seams (72c4613); `make test lint` + chart check green. e2e pending (Phase 2)
 - [x] Phase 2/3: merged docs (3f40dfc) and e2e (0edde24); fixed released-label bug (1d71455); `make test lint`, chart check, e2e vet green after merge
-- [ ] e2e green twice from a fresh `make e2e-down e2e-up e2e`: blocked, local Docker VM went read-only (host disk 1.2Gi free, 34GB build cache)
-- [ ] CI workflow run on GitHub (no remote yet)
+- [x] e2e green from a fresh cluster in CI, all scenarios passed in 52s, job 482s (run 42584368226 on 2da8d23). Local fresh rerun still blocked: Docker VM read-only
+- [x] CI workflow green on GitHub: unit, chart (Helm v4.2.3), e2e (run 42584368226)
 - [x] Review section below
 
 ## Subagent split
@@ -213,4 +213,4 @@ Each agent works in its own git worktree on its own branch, with no stacked bran
 - Integration caught 3 safety bugs no single agent saw: an empty join key read as idle (fix: `need`, 72c4613); annotations spliced unescaped into PromQL (72c4613); ignore annotation didn't release an existing label (1d71455).
 - Phase 0 corrected the plan: Istio gateway traffic is `reporter="source"`; AWS profiles can't match by hostname suffix (ingress-nginx/Traefik share ELB hostnames); cloud exporters are gauges, so only threshold 0 is meaningful.
 - Unsupported in v1: DigitalOcean (no per-LB exporter), NGINX Gateway Fabric (no per-route metric), GKE Gateway + Azure AGIC (need Gateway annotations / gateway name on Exposure).
-- Open: fresh double e2e run, Kyverno `DeletingPolicy` example. Done: Apache-2.0 LICENSE, CI on Helm v4.2.3, kube-state-metrics names checked live (v2.17.0, infradots cluster).
+- Open: Kyverno `DeletingPolicy` example. Done: Apache-2.0 LICENSE, CI on Helm v4.2.3, kube-state-metrics names checked live (v2.17.0, infradots cluster).

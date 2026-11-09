@@ -1,3 +1,5 @@
+- 2026-11-09T10:13+0200 — **Crickets CI green** — k3d via go install and Gateway API CRDs from the Go module zip (GitHub release downloads 504'd); first green run, e2e passed from a fresh cluster (2da8d23)
+- 2026-11-09T10:05+0200 — **Crickets license + Helm 4 CI** — Apache-2.0 LICENSE; CI pins Helm v4.2.3; kube-state-metrics label metric names checked live on v2.17.0 (7e85660)
 - 2026-11-09T03:49+0200 — **Crickets e2e suite** — k3d + Traefik Ingress/Gateway, Prometheus, fixture cloud exporter; 16 scenarios incl. release, recovery, Prometheus down; CI workflow; one green run, fresh rerun blocked by Docker (0edde24)
 - 2026-11-08T23:19+0200 — **Crickets docs** — README + how-it-works, configuration, providers, acting-on-the-label, development; written from code, links checked (3f40dfc)
 - 2026-11-08T23:18+0200 — **Crickets released verdict** — ignored or no-longer-exposed workloads drop the idle label; before, opting out didn't stop a queued cleanup (1d71455)
