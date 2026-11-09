@@ -1,3 +1,6 @@
+- 2026-11-09T03:49+0200 — **Crickets e2e suite** — k3d + Traefik Ingress/Gateway, Prometheus, fixture cloud exporter; 16 scenarios incl. release, recovery, Prometheus down; CI workflow; one green run, fresh rerun blocked by Docker (0edde24)
+- 2026-11-08T23:19+0200 — **Crickets docs** — README + how-it-works, configuration, providers, acting-on-the-label, development; written from code, links checked (3f40dfc)
+- 2026-11-08T23:18+0200 — **Crickets released verdict** — ignored or no-longer-exposed workloads drop the idle label; before, opting out didn't stop a queued cleanup (1d71455)
 - 2026-11-08T22:20+0200 — **Crickets phase 1 integration** — need() makes a missing join key unknown instead of idle; annotation values PromQL-escaped; verified ALB/NLB lbName rules; Exposure.RouteNamespace (72c4613)
 - 2026-11-08T22:20+0200 — **Crickets Helm chart** — CronJob (dryRun default), least-privilege ClusterRole, ConfigMap, values schema, golden tests via tests/check.sh (e5c8423)
 - 2026-11-08T22:20+0200 — **Crickets core** — config, discovery (Ingress/HTTPRoute/LB Service), provider match+render, Prometheus querier, SSA reconcile, CLI; 89 unit tests, golangci-lint clean (be208b4)
