@@ -1,0 +1,215 @@
+# Traefik Ingress scenarios. Names must not prefix each other (Traefik service regex).
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busy-ing
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: busy-ing}}
+  template:
+    metadata: {labels: {app: busy-ing}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: busy-ing
+spec:
+  selector: {app: busy-ing}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: busy-ing}
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: busy-ing.e2e.test
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: busy-ing, port: {number: 80}}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: idle-ing
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: idle-ing}}
+  template:
+    metadata: {labels: {app: idle-ing}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: idle-ing
+spec:
+  selector: {app: idle-ing}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: idle-ing}
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: idle-ing.e2e.test
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: idle-ing, port: {number: 80}}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rel-ignore
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: rel-ignore}}
+  template:
+    metadata: {labels: {app: rel-ignore}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rel-ignore
+spec:
+  selector: {app: rel-ignore}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: rel-ignore}
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: rel-ignore.e2e.test
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: rel-ignore, port: {number: 80}}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rel-gone
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: rel-gone}}
+  template:
+    metadata: {labels: {app: rel-gone}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rel-gone
+spec:
+  selector: {app: rel-gone}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: rel-gone}
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: rel-gone.e2e.test
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: rel-gone, port: {number: 80}}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ignored-ing
+  annotations: {crickets.io/ignore: "true"}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: ignored-ing}}
+  template:
+    metadata: {labels: {app: ignored-ing}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ignored-ing
+spec:
+  selector: {app: ignored-ing}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: ignored-ing}
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: ignored-ing.e2e.test
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: ignored-ing, port: {number: 80}}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: haproxy-ing
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: haproxy-ing}}
+  template:
+    metadata: {labels: {app: haproxy-ing}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-ing
+spec:
+  selector: {app: haproxy-ing}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: haproxy-ing}
+spec:
+  ingressClassName: haproxy
+  rules:
+    - host: haproxy-ing.e2e.test
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: haproxy-ing, port: {number: 80}}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: unexposed
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: unexposed}}
+  template:
+    metadata: {labels: {app: unexposed}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: unexposed
+spec:
+  selector: {app: unexposed}
+  ports: [{name: http, port: 80, targetPort: 80}]

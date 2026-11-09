@@ -1,5 +1,6 @@
 # Fixture for profile aws-alb. busy = fixture-aws-alb (value > 0), idle = fixture-aws-alb-idle (value 0), both in namespace crickets-e2e.
 # Served statically by the e2e fixture exporter; Ingress status hostname: fixture-aws-alb-1234567890.us-east-1.elb.amazonaws.com (lbName => fixture-aws-alb), class alb.
+# HELP yace_cloudwatch_requests_total Number of CloudWatch API requests.
 # TYPE yace_cloudwatch_requests_total counter
 yace_cloudwatch_requests_total 168
 # HELP aws_applicationelb_request_count_sum Help is not implemented yet.

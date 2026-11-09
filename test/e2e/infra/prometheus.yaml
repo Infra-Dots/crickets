@@ -1,0 +1,96 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata: {name: prometheus, namespace: crickets-system}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: crickets-e2e-prometheus}
+rules:
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: {name: crickets-e2e-prometheus}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: crickets-e2e-prometheus}
+subjects: [{kind: ServiceAccount, name: prometheus, namespace: crickets-system}]
+---
+apiVersion: v1
+kind: ConfigMap
+metadata: {name: prometheus, namespace: crickets-system}
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 5s
+    scrape_configs:
+      - job_name: traefik
+        kubernetes_sd_configs:
+          - {role: pod, namespaces: {names: [kube-system]}}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            regex: traefik
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_ip]
+            target_label: __address__
+            replacement: "$1:9100"
+      - job_name: fixtures
+        fallback_scrape_protocol: PrometheusText0.0.4  # busybox httpd sends no Content-Type
+        static_configs:
+          - targets: [fixtures.crickets-system.svc:80]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: prometheus, namespace: crickets-system}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: prometheus}}
+  template:
+    metadata: {labels: {app: prometheus}}
+    spec:
+      serviceAccountName: prometheus
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.5.0
+          args: [--config.file=/etc/prometheus/prometheus.yml, --storage.tsdb.path=/data, --storage.tsdb.retention.time=1h]
+          ports: [{containerPort: 9090}]
+          readinessProbe: {httpGet: {path: /-/ready, port: 9090}, periodSeconds: 2}
+          volumeMounts:
+            - {name: config, mountPath: /etc/prometheus}
+            - {name: data, mountPath: /data}
+      volumes:
+        - {name: config, configMap: {name: prometheus}}
+        - {name: data, emptyDir: {}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: prometheus, namespace: crickets-system}
+spec:
+  selector: {app: prometheus}
+  ports: [{port: 9090, targetPort: 9090}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: fixtures, namespace: crickets-system}
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: fixtures}}
+  template:
+    metadata: {labels: {app: fixtures}}
+    spec:
+      containers:
+        - name: httpd
+          image: busybox:1.37.0
+          args: [httpd, -f, -p, "8080", -h, /www]
+          ports: [{containerPort: 8080}]
+          readinessProbe: {httpGet: {path: /metrics, port: 8080}, periodSeconds: 2}
+          volumeMounts: [{name: fixtures, mountPath: /www}]
+      volumes:
+        - {name: fixtures, configMap: {name: fixtures}}
+---
+apiVersion: v1
+kind: Service
+metadata: {name: fixtures, namespace: crickets-system}
+spec:
+  selector: {app: fixtures}
+  ports: [{port: 80, targetPort: 8080}]

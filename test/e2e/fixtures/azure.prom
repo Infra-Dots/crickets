@@ -1,5 +1,6 @@
 # Fixture for profile azure. busy = fixture-azure (value > 0), idle = fixture-azure-idle (value 0), both in namespace crickets-e2e.
 # Served statically by the e2e fixture exporter; Service status.loadBalancer.ingress[].ip: 20.0.0.10 (busy) / 20.0.0.11 (idle), annotation service.beta.kubernetes.io/azure-load-balancer-resource-group. Name = resourceName fixture-azure.
+# HELP azurerm_api_ratelimit Azure API rate limit remaining.
 # TYPE azurerm_api_ratelimit gauge
 azurerm_api_ratelimit{endpoint="metrics",scope="subscription",subscriptionID="00000000-0000-0000-0000-000000000000",type="read"} 11990
 # HELP azure_lb_bytecount_total Azure metrics for ByteCount with aggregation total as Bytes
