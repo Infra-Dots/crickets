@@ -24,7 +24,9 @@ docker build -t "$IMAGE:$TAG" .
 k3d image import -c "$CLUSTER" "$IMAGE:$TAG"
 
 # Gateway API CRDs, then the Traefik gateway provider.
-$k apply -f "https://github.com/kubernetes-sigs/gateway-api/releases/download/${GATEWAY_API_VERSION}/standard-install.yaml"
+# From the Go module proxy, not GitHub release downloads (flaky in CI).
+gw=$(go mod download -json "sigs.k8s.io/gateway-api@${GATEWAY_API_VERSION}" | jq -r .Dir)
+$k apply -f "$gw/config/crd/standard/"
 $k wait --for=condition=Established crd/gateways.gateway.networking.k8s.io crd/httproutes.gateway.networking.k8s.io --timeout=60s
 until $k -n kube-system get deploy traefik >/dev/null 2>&1; do sleep 2; done
 $k apply -f test/e2e/infra/traefik-gateway-config.yaml

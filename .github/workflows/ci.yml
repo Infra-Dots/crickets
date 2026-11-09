@@ -34,10 +34,9 @@ jobs:
       - uses: azure/setup-helm@v4
         with:
           version: v4.2.3
+      # Via the Go module proxy: GitHub release downloads 504'd on two runs in a row.
       - name: Install k3d
-        run: |
-          curl -fsSL --retry 5 --retry-all-errors -o k3d https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64
-          sudo install k3d /usr/local/bin/k3d
+        run: go install github.com/k3d-io/k3d/v5@v5.9.0 && echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
       - run: make e2e-up e2e
       - if: failure()
         run: kubectl --kubeconfig .e2e/kubeconfig get pods -A
