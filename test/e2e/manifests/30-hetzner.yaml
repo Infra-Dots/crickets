@@ -1,0 +1,94 @@
+# The hetzner profile matches on the annotation; klipper's LB status is irrelevant.
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hz-idle
+spec:
+  replicas: 1
+  serviceName: hz-idle
+  selector: {matchLabels: {app: hz-idle}}
+  template:
+    metadata: {labels: {app: hz-idle}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hz-idle
+  annotations: {"load-balancer.hetzner.cloud/name": fixture-hetzner-idle}
+spec:
+  type: LoadBalancer
+  selector: {app: hz-idle}
+  ports: [{name: http, port: 9101, targetPort: 80}]
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: hz-busy
+spec:
+  replicas: 1
+  serviceName: hz-busy
+  selector: {matchLabels: {app: hz-busy}}
+  template:
+    metadata: {labels: {app: hz-busy}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hz-busy
+  annotations: {"load-balancer.hetzner.cloud/name": fixture-hetzner}
+spec:
+  type: LoadBalancer
+  selector: {app: hz-busy}
+  ports: [{name: http, port: 9102, targetPort: 80}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hz-empty
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: hz-empty}}
+  template:
+    metadata: {labels: {app: hz-empty}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hz-empty
+  annotations: {"load-balancer.hetzner.cloud/name": ""}
+spec:
+  type: LoadBalancer
+  selector: {app: hz-empty}
+  ports: [{name: http, port: 9103, targetPort: 80}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hz-missing
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: hz-missing}}
+  template:
+    metadata: {labels: {app: hz-missing}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hz-missing
+spec:
+  type: LoadBalancer
+  selector: {app: hz-missing}
+  ports: [{name: http, port: 9104, targetPort: 80}]

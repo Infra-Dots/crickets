@@ -1,0 +1,111 @@
+# Gateway API via Traefik. Listener port 8000 is Traefik's web entrypoint.
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata: {name: e2e-gw}
+spec:
+  gatewayClassName: traefik
+  listeners:
+    - {name: web, port: 8000, protocol: HTTP, allowedRoutes: {namespaces: {from: Same}}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gw-busy
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: gw-busy}}
+  template:
+    metadata: {labels: {app: gw-busy}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gw-busy
+spec:
+  selector: {app: gw-busy}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: gw-busy}
+spec:
+  parentRefs: [{name: e2e-gw}]
+  hostnames: [gw-busy.e2e.test]
+  rules:
+    - backendRefs: [{name: gw-busy, port: 80}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gw-idle
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: gw-idle}}
+  template:
+    metadata: {labels: {app: gw-idle}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gw-idle
+spec:
+  selector: {app: gw-idle}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: gw-idle}
+spec:
+  parentRefs: [{name: e2e-gw}]
+  hostnames: [gw-idle.e2e.test]
+  rules:
+    - backendRefs: [{name: gw-idle, port: 80}]
+# One workload, busy Ingress + idle HTTPRoute.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mixed
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: mixed}}
+  template:
+    metadata: {labels: {app: mixed}}
+    spec:
+      containers:
+        - {name: whoami, image: "traefik/whoami:v1.10.3", ports: [{containerPort: 80}]}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mixed
+spec:
+  selector: {app: mixed}
+  ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata: {name: mixed}
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: mixed.e2e.test
+      http:
+        paths:
+          - {path: /, pathType: Prefix, backend: {service: {name: mixed, port: {number: 80}}}}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata: {name: mixed}
+spec:
+  parentRefs: [{name: e2e-gw}]
+  hostnames: [mixed.e2e.test]
+  rules:
+    - backendRefs: [{name: mixed, port: 80}]

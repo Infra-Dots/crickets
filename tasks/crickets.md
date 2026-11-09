@@ -166,12 +166,12 @@ RBAC: `get,list` deployments, statefulsets, services, ingresses, ingressclasses,
 - [x] `values.schema.json`; `helm lint` + `helm template` golden test in CI
 
 ### Phase 2: e2e on k3s (subagent **C**, after A+B)
-- [ ] `hack/e2e-up.sh`: k3d cluster (k3s ships Traefik), build + `k3d image import`, minimal Prometheus manifest scraping Traefik + a fixture exporter (busybox httpd serving `fixtures/*.prom`), `helm install` with `window: 2m`, `minAge: 0`, `dryRun: false`
-- [ ] Scenarios (see showcase): busy ingress kept; idle ingress labeled; unexposed skipped; ignore-annotation skipped; young workload skipped; unknown ingress class skipped; idle StatefulSet behind a Hetzner-fixture LB labeled; ALB-fixture Ingress with fake status and traffic kept; busy HTTPRoute via Traefik Gateway kept; idle HTTPRoute labeled; workload with a busy Ingress and an idle HTTPRoute kept (every exposure must be idle)
-- [ ] Recovery: send traffic to the idle one, re-run the job, label removed
-- [ ] Prometheus scaled to 0, job fails, no labels changed
-- [ ] Runs the job with `kubectl create job --from=cronjob/...` and asserts through client-go
-- [ ] CI job on ubuntu runner
+- [x] `hack/e2e-up.sh`: k3d cluster (k3s ships Traefik), build + `k3d image import`, minimal Prometheus manifest scraping Traefik + a fixture exporter (busybox httpd serving `fixtures/*.prom`), `helm install` with `window: 2m`, `minAge: 0`, `dryRun: false`
+- [x] Scenarios (see showcase): busy ingress kept; idle ingress labeled; unexposed skipped; ignore-annotation skipped; young workload skipped; unknown ingress class skipped; idle StatefulSet behind a Hetzner-fixture LB labeled; ALB-fixture Ingress with fake status and traffic kept; busy HTTPRoute via Traefik Gateway kept; idle HTTPRoute labeled; workload with a busy Ingress and an idle HTTPRoute kept (every exposure must be idle)
+- [x] Recovery: send traffic to the idle one, re-run the job, label removed
+- [x] Prometheus scaled to 0, job fails, no labels changed
+- [x] Runs the job with `kubectl create job --from=cronjob/...` and asserts through client-go
+- [x] CI job on ubuntu runner
 
 ### Phase 3: docs (subagent **D**, after A+P)
 - [x] `README.md`: what it does, what it won't do (delete), 60-second quickstart

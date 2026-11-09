@@ -17,3 +17,14 @@ build:
 
 image:
 	docker build -t $(IMAGE):$(TAG) .
+
+E2E_KUBECONFIG ?= $(CURDIR)/.e2e/kubeconfig
+.PHONY: e2e-up e2e e2e-down
+e2e-up:
+	KUBECONFIG=$(E2E_KUBECONFIG) IMAGE=$(IMAGE) hack/e2e-up.sh
+
+e2e:
+	KUBECONFIG=$(E2E_KUBECONFIG) go test -tags e2e ./test/e2e/ -v -count=1 -timeout 30m
+
+e2e-down:
+	hack/e2e-down.sh

@@ -1,5 +1,6 @@
 # Fixture for profile gcp. busy = fixture-gcp (value > 0), idle = fixture-gcp-idle (value 0), both in namespace crickets-e2e.
 # Served statically by the e2e fixture exporter; Ingress annotation ingress.kubernetes.io/url-map: fixture-gcp (idle: fixture-gcp-idle), class gce.
+# HELP stackdriver_monitoring_scrapes_total Total number of Stackdriver Monitoring scrapes.
 # TYPE stackdriver_monitoring_scrapes_total counter
 stackdriver_monitoring_scrapes_total 1200
 # HELP stackdriver_https_lb_rule_loadbalancing_googleapis_com_https_request_count Number of requests served by HTTP/S load balancer.
