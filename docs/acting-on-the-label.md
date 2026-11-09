@@ -34,6 +34,8 @@ kube-state-metrics exposes workload labels only if you allow them. Add this to i
 
 The label then appears on `kube_deployment_labels` and `kube_statefulset_labels`, with the key sanitised to `label_crickets_io_idle`.
 
+kube-state-metrics reads a single `--metric-labels-allowlist`. If you already pass one (kube-prometheus-stack sets `nodes=[...]`), append to it rather than adding a second flag: `--metric-labels-allowlist=nodes=[...],deployments=[crickets.io/idle],statefulsets=[crickets.io/idle]`. Checked against kube-state-metrics v2.17.0: both metrics are `[STABLE]` gauges, and `kubernetes.io/arch` comes out as `label_kubernetes_io_arch`.
+
 ```promql
 kube_deployment_labels{label_crickets_io_idle="true"}
 or
@@ -58,7 +60,7 @@ groups:
           summary: "{{ $labels.namespace }}/{{ $labels.deployment }}{{ $labels.statefulset }} had no edge traffic for the Crickets window"
 ```
 
-The label is removed when traffic comes back, so the alert resolves by itself. A `for` longer than the CronJob period avoids flapping around a single pass.
+The label is removed when traffic comes back, the workload is opted out, or it loses its last exposure, so the alert resolves by itself. A `for` longer than the CronJob period avoids flapping around a single pass.
 
 ## Delete after a grace period (examples)
 

@@ -112,3 +112,7 @@ kube-green and the KEDA HTTP add-on sleep or scale to zero on a schedule or on t
 - [Acting on the label](docs/acting-on-the-label.md): list, alert, clean up, review by hand.
 - [Development](docs/development.md): layout, tests, e2e.
 - [Provider research](docs/providers-research.md): the evidence behind each profile.
+
+## License
+
+Apache License 2.0. See [LICENSE](LICENSE).

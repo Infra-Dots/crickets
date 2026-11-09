@@ -18,6 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.3
       - run: charts/crickets/tests/check.sh
 
   e2e:
@@ -28,6 +31,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.3
       - name: Install k3d
         run: |
           curl -fsSL -o k3d https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-linux-amd64
