@@ -1,6 +1,8 @@
 # Built-in provider profiles. Contract: tasks/crickets.md. Evidence: docs/providers-research.md.
 # Counters: sum(increase(..)). Gauges (exporters re-export the latest value): sum(sum_over_time(..)).
 # Join keys go through `need`: an empty one fails the render, so the exposure is unknown, never idle.
+# A metric label named like a target label (service, namespace) becomes exported_* under
+# honor_labels: false, and a miss reads as zero traffic, so such queries `or` both spellings.
 # Order = match order (first wins): controllers first, cloud LBs last.
 
 - name: traefik
@@ -14,7 +16,10 @@
     annotations: []
     hostnameSuffixes: []
   # live k3d: service="spike-whoami-80@kubernetes" (<ns>-<svc>-<port>@kubernetes)
-  query: 'sum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Service}}-.*@kubernetes"}[{{.Window}}]))'
+  query: >-
+    sum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Service}}-.*@kubernetes"}[{{.Window}}]))
+    or
+    sum(increase(traefik_service_requests_total{exported_service=~"{{.Namespace}}-{{.Service}}-.*@kubernetes"}[{{.Window}}]))
   health: 'traefik_config_last_reload_success'
 
 - name: traefik-gateway
@@ -28,7 +33,10 @@
     annotations: []
     hostnameSuffixes: []
   # live k3d: service="spike-whoami-http-80@kubernetesgateway" (<ns>-<svc>-http-<port>; "http" is not the port name)
-  query: 'sum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Service}}-https?-[0-9]+@kubernetesgateway"}[{{.Window}}]))'
+  query: >-
+    sum(increase(traefik_service_requests_total{service=~"{{.Namespace}}-{{.Service}}-https?-[0-9]+@kubernetesgateway"}[{{.Window}}]))
+    or
+    sum(increase(traefik_service_requests_total{exported_service=~"{{.Namespace}}-{{.Service}}-https?-[0-9]+@kubernetesgateway"}[{{.Window}}]))
   health: 'traefik_config_last_reload_success'
 
 - name: ingress-nginx
@@ -41,11 +49,14 @@
     gatewayClasses: []
     annotations: []
     hostnameSuffixes: []
-  # Prometheus renames the ingress namespace to exported_namespace when honor_labels is false.
+  # Scraped with honor_labels: false, the target's own namespace (pod scrape) or namespace and
+  # service (endpoints scrape, e.g. Alloy or a ServiceMonitor) push ours to exported_*.
   query: >-
     sum(increase(nginx_ingress_controller_requests{ingress="{{.Ingress}}",service="{{.Service}}",namespace="{{.Namespace}}"}[{{.Window}}]))
     or
     sum(increase(nginx_ingress_controller_requests{ingress="{{.Ingress}}",service="{{.Service}}",exported_namespace="{{.Namespace}}"}[{{.Window}}]))
+    or
+    sum(increase(nginx_ingress_controller_requests{ingress="{{.Ingress}}",exported_service="{{.Service}}",exported_namespace="{{.Namespace}}"}[{{.Window}}]))
   health: 'nginx_ingress_controller_config_last_reload_successful'
 
 - name: kong
@@ -59,7 +70,10 @@
     annotations: []
     hostnameSuffixes: []
   # KIC names the Kong service <ns>.<svc>.<port>. Needs the prometheus plugin with status_code_metrics=true.
-  query: 'sum(increase(kong_http_requests_total{service=~"{{.Namespace}}[.]{{.Service}}[.][^.]+"}[{{.Window}}]))'
+  query: >-
+    sum(increase(kong_http_requests_total{service=~"{{.Namespace}}[.]{{.Service}}[.][^.]+"}[{{.Window}}]))
+    or
+    sum(increase(kong_http_requests_total{exported_service=~"{{.Namespace}}[.]{{.Service}}[.][^.]+"}[{{.Window}}]))
   health: 'kong_datastore_reachable'
 
 - name: kong-gateway
@@ -73,7 +87,10 @@
     annotations: []
     hostnameSuffixes: []
   # KIC names the Kong service httproute.<routeNS>.svc.<ns>.<svc>.<port>[.<weight>] (backends joined by "_").
-  query: 'sum(increase(kong_http_requests_total{service=~"httproute[.].*[.]svc[.](.*_)?{{.Namespace}}[.]{{.Service}}[.].*"}[{{.Window}}]))'
+  query: >-
+    sum(increase(kong_http_requests_total{service=~"httproute[.].*[.]svc[.](.*_)?{{.Namespace}}[.]{{.Service}}[.].*"}[{{.Window}}]))
+    or
+    sum(increase(kong_http_requests_total{exported_service=~"httproute[.].*[.]svc[.](.*_)?{{.Namespace}}[.]{{.Service}}[.].*"}[{{.Window}}]))
   health: 'kong_datastore_reachable'
 
 - name: istio

@@ -8,6 +8,7 @@ Two rules apply to every profile:
 
 - **Health is checked twice.** The `health` query must return a sample now and one window ago. A source that is new, down, or kept for less than the window gives unknown, not idle. Details: [how it works](how-it-works.md#unknown-is-never-idle).
 - **Counters** use `sum(increase(m[window]))`. **Gauges** use `sum(sum_over_time(m[window]))`. Idle means the result is `<= threshold`.
+- **Both label spellings.** A metric label called `service` or `namespace` collides with the scrape target's own labels. With `honor_labels: false` (the default, and what Grafana Alloy and Prometheus Operator ServiceMonitors use) Prometheus renames the metric's label to `exported_service` / `exported_namespace`. A query that only spells the original finds nothing, and nothing reads as zero traffic, so every such profile `or`s both spellings. A test guards this.
 
 | Profile | Exposure | Matches | Supported |
 |---|---|---|---|
@@ -36,6 +37,8 @@ Two rules apply to every profile:
 - **Query:**
   ```promql
   sum(increase(traefik_service_requests_total{service=~"shop-web-.*@kubernetes"}[604800s]))
+  or
+  sum(increase(traefik_service_requests_total{exported_service=~"shop-web-.*@kubernetes"}[604800s]))
   ```
 - **Health:** `traefik_config_last_reload_success`.
 - **Caveat:** the port part is a wildcard, so Service `a` also matches `shop-a-b-80`. That errs toward busy. Traefik emits no series for a backend never hit; the empty result counts as 0.
@@ -48,6 +51,8 @@ Two rules apply to every profile:
 - **Query:**
   ```promql
   sum(increase(traefik_service_requests_total{service=~"shop-web-https?-[0-9]+@kubernetesgateway"}[604800s]))
+  or
+  sum(increase(traefik_service_requests_total{exported_service=~"shop-web-https?-[0-9]+@kubernetesgateway"}[604800s]))
   ```
 - **Health:** `traefik_config_last_reload_success`.
 - **Caveat:** same wildcard-toward-busy note as Traefik.
@@ -56,12 +61,14 @@ Two rules apply to every profile:
 
 - **Enable:** the controller's metrics (`controller.metrics.enabled=true` in the Helm chart) and a scrape of port 10254. Upstream has retired the project, but it is still common.
 - **Metric:** `nginx_ingress_controller_requests`, a counter.
-- **Join:** `ingress`, `service`, and the namespace. When Prometheus scrapes with `honor_labels: false`, the controller's `namespace` label is renamed `exported_namespace`, so the query tries both and sums them with `or`.
+- **Join:** `ingress`, `service`, and the namespace. A pod scrape renames only `namespace` to `exported_namespace`; an endpoints scrape (Alloy, a ServiceMonitor) renames `service` too. The query tries all three spellings with `or`.
 - **Query:**
   ```promql
   sum(increase(nginx_ingress_controller_requests{ingress="web",service="web",namespace="shop"}[604800s]))
   or
   sum(increase(nginx_ingress_controller_requests{ingress="web",service="web",exported_namespace="shop"}[604800s]))
+  or
+  sum(increase(nginx_ingress_controller_requests{ingress="web",exported_service="web",exported_namespace="shop"}[604800s]))
   ```
 - **Health:** `nginx_ingress_controller_config_last_reload_successful`.
 - **Caveat:** no series for a never-hit backend; counts as 0.
@@ -74,6 +81,8 @@ Two rules apply to every profile:
 - **Query:**
   ```promql
   sum(increase(kong_http_requests_total{service=~"shop[.]web[.][^.]+"}[604800s]))
+  or
+  sum(increase(kong_http_requests_total{exported_service=~"shop[.]web[.][^.]+"}[604800s]))
   ```
 - **Health:** `kong_datastore_reachable`.
 
@@ -84,6 +93,8 @@ Two rules apply to every profile:
 - **Query:**
   ```promql
   sum(increase(kong_http_requests_total{service=~"httproute[.].*[.]svc[.](.*_)?shop[.]web[.].*"}[604800s]))
+  or
+  sum(increase(kong_http_requests_total{exported_service=~"httproute[.].*[.]svc[.](.*_)?shop[.]web[.].*"}[604800s]))
   ```
 - **Health:** `kong_datastore_reachable`.
 - **Caveat:** the wildcards (route namespace, port, weight, other backends) are loose on purpose. A false match counts someone else's traffic, so it errs toward busy.

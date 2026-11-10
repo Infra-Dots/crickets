@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -188,5 +189,22 @@ func TestEmbeddedProfiles(t *testing.T) {
 	}
 	if _, err := Load(nil); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// Behind Alloy or a ServiceMonitor the controller's own service/namespace labels arrive as
+// exported_*; a query that only spells the original reads zero and labels busy workloads idle.
+func TestEmbeddedProfilesMatchExportedLabels(t *testing.T) {
+	ps, err := Parse(builtin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetLabel := regexp.MustCompile(`[{,](service|namespace)=`)
+	for _, p := range ps {
+		for _, m := range targetLabel.FindAllStringSubmatch(p.Query, -1) {
+			if !strings.Contains(p.Query, "exported_"+m[1]+"=") {
+				t.Errorf("%s: matches %s= but not exported_%s=", p.Name, m[1], m[1])
+			}
+		}
 	}
 }
