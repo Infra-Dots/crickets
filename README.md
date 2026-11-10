@@ -47,23 +47,17 @@ An exposure with no matching supported profile makes the workload **unknown**, n
 
 ## Quickstart
 
-You need a cluster, a Prometheus that scrapes your ingress controller (or the cloud exporter for your load balancer), and Helm 3.
+You need a cluster, a Prometheus that scrapes your ingress controller (or the cloud exporter for your load balancer), and Helm 3.8 or later (for OCI charts).
 
-Build the image and make it available to the cluster. The chart's default image is `ghcr.io/infra-dots/crickets:<appVersion>`; use your own tag if that is not published for you.
-
-```sh
-make image TAG=dev
-k3d image import ghcr.io/infra-dots/crickets:dev   # or: kind load docker-image ...
-```
-
-Install from the local chart. It starts in dry run.
+Install the chart from GHCR. It starts in dry run.
 
 ```sh
-helm install crickets ./charts/crickets \
+helm install crickets oci://ghcr.io/infra-dots/charts/crickets \
   --namespace crickets --create-namespace \
-  --set image.tag=dev \
   --set config.prometheus.url=http://prometheus.monitoring:9090
 ```
+
+Each `v*` tag publishes the image `ghcr.io/infra-dots/crickets:<version>` (amd64 and arm64) and the chart at the same version. To run a local build instead, `make image TAG=dev`, load it into the cluster (`k3d image import`, `kind load docker-image`), and install `./charts/crickets` with `--set image.tag=dev`.
 
 Trigger a run now and read the logs (JSON, on stderr).
 

@@ -1,0 +1,47 @@
+name: release
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The chart's default image tag is appVersion, which has no leading v.
+      - id: v
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/infra-dots/crickets:${{ steps.v.outputs.version }}
+
+  chart:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: azure/setup-helm@v4
+        with:
+          version: v4.2.3
+      # Tag v0.1.0 ships chart 0.1.0 whose default image tag (appVersion) is the same release.
+      - name: Check the tag matches Chart.yaml
+        run: |
+          v=${GITHUB_REF_NAME#v}
+          grep -qx "version: $v" charts/crickets/Chart.yaml
+          grep -qx "appVersion: \"$v\"" charts/crickets/Chart.yaml
+      - run: helm package charts/crickets
+      - run: echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - run: helm push "crickets-${GITHUB_REF_NAME#v}.tgz" oci://ghcr.io/infra-dots/charts
