@@ -213,4 +213,5 @@ Each agent works in its own git worktree on its own branch, with no stacked bran
 - Integration caught 3 safety bugs no single agent saw: an empty join key read as idle (fix: `need`, 72c4613); annotations spliced unescaped into PromQL (72c4613); ignore annotation didn't release an existing label (1d71455).
 - Phase 0 corrected the plan: Istio gateway traffic is `reporter="source"`; AWS profiles can't match by hostname suffix (ingress-nginx/Traefik share ELB hostnames); cloud exporters are gauges, so only threshold 0 is meaningful.
 - Unsupported in v1: DigitalOcean (no per-LB exporter), NGINX Gateway Fabric (no per-route metric), GKE Gateway + Azure AGIC (need Gateway annotations / gateway name on Exposure).
-- Open: Kyverno `DeletingPolicy` example. Done: Apache-2.0 LICENSE, CI on Helm v4.2.3, kube-state-metrics names checked live (v2.17.0, infradots cluster).
+- Live dry run on the infradots cluster (Alloy → Grafana Cloud) caught a 4th: behind an endpoints scrape `service` arrives as `exported_service`, so nginx/traefik/kong read zero and every busy app was idle (806d970). Deploy: infra#1290 (dry run).
+- Open: Kyverno `DeletingPolicy` example; GHCR packages still private. Done: Apache-2.0 LICENSE, CI on Helm v4.2.3, kube-state-metrics names checked live (v2.17.0, infradots cluster).

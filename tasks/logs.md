@@ -1,3 +1,6 @@
+- 2026-11-10T14:20+0200 — **Crickets v0.1.0 released** — tag v0.1.0: image ghcr.io/infra-dots/crickets:0.1.0 (amd64+arm64) + OCI chart; chart schema now allows `global` so it works as a dependency (84b5aed)
+- 2026-11-10T14:18+0200 — **Crickets release workflow** — v* tags push image and chart to GHCR; tag must equal Chart.yaml version/appVersion (fc4937f)
+- 2026-11-10T14:18+0200 — **Crickets exported_* labels** — nginx/traefik/kong queries `or` exported_service/exported_namespace; infradots dry run (Alloy) went from 5 busy apps labeled idle to idle=0 active=5 (806d970)
 - 2026-11-09T10:13+0200 — **Crickets CI green** — k3d via go install and Gateway API CRDs from the Go module zip (GitHub release downloads 504'd); first green run, e2e passed from a fresh cluster (2da8d23)
 - 2026-11-09T10:05+0200 — **Crickets license + Helm 4 CI** — Apache-2.0 LICENSE; CI pins Helm v4.2.3; kube-state-metrics label metric names checked live on v2.17.0 (7e85660)
 - 2026-11-09T03:49+0200 — **Crickets e2e suite** — k3d + Traefik Ingress/Gateway, Prometheus, fixture cloud exporter; 16 scenarios incl. release, recovery, Prometheus down; CI workflow; one green run, fresh rerun blocked by Docker (0edde24)

@@ -1,1 +1,1 @@
-- [Crickets](crickets.md) — **partial** · crickets · Go CronJob: workload→Service→Ingress/HTTPRoute/LB→provider PromQL; labels `crickets.io/idle` when every exposure ≤ threshold, unknown≠idle; phases 0–3 merged, CI + e2e green (2da8d23).
+- [Crickets](crickets.md) — **partial** · crickets · Go CronJob: workload→Service→Ingress/HTTPRoute/LB→provider PromQL; labels `crickets.io/idle` when every exposure ≤ threshold, unknown≠idle; v0.1.0 on GHCR, dry-run deploy infra#1290 (84b5aed).
