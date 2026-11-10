@@ -15,4 +15,6 @@ for set in defaults override; do
     fail=1
   fi
 done
+# As a dependency Helm passes `global`; the root schema must allow it.
+helm template crickets . --set global.probe=1 >/dev/null
 exit $fail

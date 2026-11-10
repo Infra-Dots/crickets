@@ -3,6 +3,7 @@
   "type": "object",
   "additionalProperties": false,
   "properties": {
+    "global": {"type": "object"},
     "schedule": {"type": "string", "minLength": 1},
     "activeDeadlineSeconds": {"type": ["integer", "null"], "minimum": 1},
     "successfulJobsHistoryLimit": {"type": "integer", "minimum": 0},
